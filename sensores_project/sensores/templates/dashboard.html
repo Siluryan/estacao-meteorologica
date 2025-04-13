@@ -1,75 +1,46 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="UTF-8">
-  <title>Dashboard de Sensores</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f7f8;
-      margin: 0;
-      padding: 20px;
-    }
+{% extends 'base.html' %}
 
-    h1 {
-      text-align: center;
-      color: #333;
-      margin-bottom: 30px;
-    }
+{% block title %}Dashboard de Sensores{% endblock %}
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background-color: #fff;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      border-radius: 8px;
-      overflow: hidden;
-    }
+{% block content %}
+<h1>Dashboard de Sensores</h1>
 
-    th, td {
-      padding: 12px 15px;
-      text-align: center;
-    }
+<div class="filtro-container">
+    <select id="periodo">
+        <option value="hoje">Hoje</option>
+        <option value="semana">Última Semana</option>
+        <option value="mes">Último Mês</option>
+    </select>
+    <button onclick="filtrarDados()">Filtrar</button>
+</div>
 
-    th {
-      background-color: #007BFF;
-      color: white;
-      font-weight: bold;
-      text-transform: uppercase;
-    }
-
-    tr:nth-child(even) {
-      background-color: #f2f2f2;
-    }
-
-    tr:hover {
-      background-color: #d0e7ff;
-    }
-  </style>
-</head>
-<body>
-
-  <h1>Dashboard de Sensores</h1>
-  <table>
+<table>
     <tr>
-      <th>Data</th>
-      <th>Temperatura (°C)</th>
-      <th>Umidade (%)</th>
-      <th>Luminosidade (lux)</th>
-      <th>Qualidade do Ar</th>
-      <th>Chuva</th>
+        <th>Data</th>
+        <th>Temperatura (°C)</th>
+        <th>Umidade (%)</th>
+        <th>Luminosidade (lux)</th>
+        <th>Qualidade do Ar</th>
+        <th>Chuva</th>
     </tr>
     {% for dado in dados %}
     <tr>
-      <td>{{ dado.data }}</td>
-      <td>{{ dado.temperatura }}</td>
-      <td>{{ dado.umidade }}</td>
-      <td>{{ dado.luminosidade }}</td>
-      <td>{{ dado.qualidade_ar }}</td>
-      <td>{{ dado.chuva }}</td>
+        <td>{{ dado.data }}</td>
+        <td>{{ dado.temperatura }}</td>
+        <td>{{ dado.umidade }}</td>
+        <td>{{ dado.luminosidade }}</td>
+        <td>{{ dado.qualidade_ar }}</td>
+        <td>{{ dado.chuva }}</td>
     </tr>
     {% endfor %}
-  </table>
+</table>
+{% endblock %}
 
-</body>
-</html>
+{% block extra_js %}
+<script>
+    function filtrarDados() {
+        const periodo = document.getElementById('periodo').value;
+        window.location.href = `{% url 'dashboard' %}?periodo=${periodo}`;
+    }
+</script>
+{% endblock %}
