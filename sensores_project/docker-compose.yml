@@ -6,38 +6,25 @@ services:
     command: >
       sh -c "python manage.py makemigrations sensores --noinput &&
              python manage.py migrate --noinput &&
-             python init.py &&
+             python _superuser.py &&
              daphne -b 0.0.0.0 -p 8000 sensores_project.asgi:application"
     volumes:
       - .:/app
     ports:
       - "8000:8000"
-    environment:
-      - DEBUG=1
-      - SECRET_KEY=your-secret-key
-      - DATABASE_URL=postgres://postgres:postgres@db:5432/postgres
-      - MQTT_BROKER=rabbitmq
-      - MQTT_PORT=1883
-      - MQTT_TOPIC=estacao.meteorologica
-      - MQTT_USERNAME=admin
-      - MQTT_PASSWORD=admin123
+    env_file:
+      - .env
     depends_on:
       db:
         condition: service_healthy
       rabbitmq:
         condition: service_started
+    restart: unless-stopped
 
   consumer:
     build: .
     env_file:
       - .env
-    environment:
-      - DJANGO_SETTINGS_MODULE=sensores_project.settings
-      - MQTT_BROKER=rabbitmq
-      - MQTT_PORT=1883
-      - MQTT_TOPIC=${MQTT_TOPIC}
-      - MQTT_USERNAME=${MQTT_USERNAME}
-      - MQTT_PASSWORD=${MQTT_PASSWORD}
     depends_on:
       db:
         condition: service_healthy
@@ -47,19 +34,17 @@ services:
       - .:/app
     command: >
       sh -c "sleep 60 &&
-             python consumer.py"
+             python _consumer.py"
     restart: unless-stopped
 
   db:
-    image: postgres:13
-    ports:
-      - "5432:5432"
+    image: postgres:15
     volumes:
       - postgres_data:/var/lib/postgresql/data
     env_file:
       - .env
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -71,16 +56,22 @@ services:
       - "5672:5672" 
       - "15672:15672" 
       - "1883:1883"   
-    environment:
-      - RABBITMQ_DEFAULT_USER=${MQTT_USERNAME}
-      - RABBITMQ_DEFAULT_PASS=${MQTT_PASSWORD}
+    env_file:
+      - .env
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - ./rabbitmq/rabbitmq.sh:/rabbitmq.sh
+    entrypoint: sh -c "rabbitmq-server & sleep 10 && chmod +x /rabbitmq.sh && /rabbitmq.sh"
     restart: unless-stopped
-    command: >
-      sh -c "rabbitmq-plugins enable rabbitmq_mqtt rabbitmq_web_mqtt &&
-             rabbitmq-server"
+
+  redis:
+    image: redis:7
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
 
 volumes:
   postgres_data:
   rabbitmq_data:
+  redis_data:

@@ -7,7 +7,6 @@ import logging
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
-
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -23,8 +22,8 @@ from sensores.models import DadoSensor
 MQTT_BROKER = os.environ.get("MQTT_BROKER", "rabbitmq")
 MQTT_PORT = int(os.environ.get("MQTT_PORT", "1883"))
 MQTT_TOPIC = os.environ.get("MQTT_TOPIC", "estacao.meteorologica")
-MQTT_USERNAME = os.environ.get("MQTT_USERNAME", "admin")
-MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD", "admin123")
+MQTT_USERNAME = os.environ.get("MQTT_USERNAME")
+MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD")
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
@@ -58,20 +57,24 @@ def on_message(client, userdata, msg):
         async_to_sync(channel_layer.group_send)(
             "dashboard",
             {
-                "type": "new_data",
+                "type": "sensor_update",
                 "data": {
-                "temperatura": dado.temperatura,
-                "umidade": dado.umidade,
-                "luminosidade": dado.luminosidade,
-                "qualidade_ar": dado.qualidade_ar,
-                "chuva": dado.chuva,
-                "data_hora": dado.data.isoformat()
-            }
+                    "temperatura": dado.temperatura,
+                    "umidade": dado.umidade,
+                    "luminosidade": dado.luminosidade,
+                    "qualidade_ar": dado.qualidade_ar,
+                    "chuva": dado.chuva,
+                    "data_hora": dado.data.isoformat()
+                }
             }
         )
+        logger.info("Dados enviados para o WebSocket")
 
+    except json.JSONDecodeError as e:
+        logger.error(f"Erro ao decodificar JSON: {e}")
+        logger.error(f"Payload inválido: {msg.payload.decode()}")
     except Exception as e:
-        logger.error(f"Erro ao salvar: {e}")
+        logger.error(f"Erro ao processar mensagem: {e}")
         logger.error(f"Payload que causou o erro: {msg.payload.decode()}")
 
 def connect_with_retry(client, max_retries=5, delay=5):
@@ -87,13 +90,17 @@ def connect_with_retry(client, max_retries=5, delay=5):
                 time.sleep(delay)
     return False
 
-client = mqtt.Client()
-client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
-client.on_connect = on_connect
-client.on_message = on_message
+def main():
+    client = mqtt.Client()
+    client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
+    client.on_connect = on_connect
+    client.on_message = on_message
 
-if connect_with_retry(client):
-    logger.info("Conectado com sucesso! Iniciando loop...")
-    client.loop_forever()
-else:
-    logger.error("Falha ao conectar após várias tentativas. Encerrando...")
+    if connect_with_retry(client):
+        logger.info("Conectado com sucesso! Iniciando loop...")
+        client.loop_forever()
+    else:
+        logger.error("Falha ao conectar após várias tentativas. Encerrando...")
+
+if __name__ == "__main__":
+    main()

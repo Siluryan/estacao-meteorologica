@@ -1,7 +1,7 @@
 from django.db import models
 
 class DadoSensor(models.Model):
-    data = models.DateTimeField(auto_now_add=True)  # mudando para data
+    data = models.DateTimeField(auto_now_add=True)
     temperatura = models.FloatField()
     umidade = models.FloatField()
     luminosidade = models.FloatField()
