@@ -1,6 +1,37 @@
 version: '3.8'
 
 services:
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.siluryan.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.siluryan.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.siluryan.acme.httpchallenge=true"
+      - "--certificatesresolvers.siluryan.acme.httpchallenge.entrypoint=web"
+      - "--api.dashboard=true"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./letsencrypt:/letsencrypt
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`${DOMAIN}`) && PathPrefix(`/dashboard`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls.certresolver=siluryan"
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_DASHBOARD_AUTH}"
+      - "traefik.http.routers.dashboard.middlewares=dashboard-auth@docker"
+    networks:
+      - app_network
+    restart: unless-stopped
+
   web:
     build: .
     command: >
@@ -10,8 +41,6 @@ services:
              daphne -b 0.0.0.0 -p 8000 sensores_project.asgi:application"
     volumes:
       - .:/app
-    ports:
-      - "8000:8000"
     env_file:
       - .env
     depends_on:
@@ -19,6 +48,23 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_started
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sensores.rule=Host(`${DOMAIN:-localhost}`)"
+      - "traefik.http.routers.sensores.entrypoints=web"
+      - "traefik.http.services.sensores.loadbalancer.server.port=8000"
+      - "traefik.http.middlewares.sensores.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.sensores.middlewares=sensores@docker"
+      - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.middlewares.websocket.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.sensores-secure.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.sensores-secure.entrypoints=websecure"
+      - "traefik.http.routers.sensores-secure.tls=true"
+      - "traefik.http.routers.sensores-secure.tls.certresolver=siluryan"
+      - "traefik.http.routers.sensores-secure.service=sensores"
+      - "traefik.http.routers.sensores-secure.middlewares=websocket@docker"
+    networks:
+      - app_network
     restart: unless-stopped
 
   consumer:
@@ -35,6 +81,8 @@ services:
     command: >
       sh -c "sleep 60 &&
              python _consumer.py"
+    networks:
+      - app_network
     restart: unless-stopped
 
   db:
@@ -48,14 +96,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - app_network
     restart: unless-stopped
 
   rabbitmq:
     image: rabbitmq:3.12.0-management
-    ports:
-      - "5672:5672" 
-      - "15672:15672" 
-      - "1883:1883"   
     env_file:
       - .env
     volumes:
@@ -63,13 +109,36 @@ services:
       - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
       - ./rabbitmq/rabbitmq.sh:/rabbitmq.sh
     entrypoint: sh -c "rabbitmq-server & sleep 10 && chmod +x /rabbitmq.sh && /rabbitmq.sh"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.rabbitmq.rule=Host(`${DOMAIN:-localhost}`) && PathPrefix(`/rabbitmq`)"
+      - "traefik.http.routers.rabbitmq.entrypoints=web"
+      - "traefik.http.services.rabbitmq.loadbalancer.server.port=15672"
+      - "traefik.http.middlewares.rabbitmq-strip.stripprefix.prefixes=/rabbitmq"
+      - "traefik.http.routers.rabbitmq.middlewares=rabbitmq-strip@docker"
+      - "traefik.http.routers.rabbitmq-secure.rule=Host(`${DOMAIN}`) && PathPrefix(`/rabbitmq`)"
+      - "traefik.http.routers.rabbitmq-secure.entrypoints=websecure"
+      - "traefik.http.routers.rabbitmq-secure.tls=true"
+      - "traefik.http.routers.rabbitmq-secure.tls.certresolver=siluryan"
+      - "traefik.http.routers.rabbitmq-secure.middlewares=rabbitmq-strip@docker"
+    networks:
+      - app_network
+    ports:
+    - "5672:5672"
+    - "1883:1883"
     restart: unless-stopped
 
   redis:
     image: redis:7
     volumes:
       - redis_data:/data
+    networks:
+      - app_network
     restart: unless-stopped
+
+networks:
+  app_network:
+    driver: bridge
 
 volumes:
   postgres_data:

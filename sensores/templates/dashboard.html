@@ -170,7 +170,8 @@
     }
     
     function conectarWebSocket() {
-        ws = new WebSocket(`ws://${window.location.host}/ws/dashboard/`);
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        ws = new WebSocket(`${protocol}//${window.location.host}/ws/dashboard/`);
         
         ws.onmessage = function(event) {
             const data = JSON.parse(event.data);
