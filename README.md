@@ -7,6 +7,10 @@ docker-compose up --build -d
 ### Configuração do arquivo .env
 
 ```sh
+ACME_EMAIL=example@gmail.com
+DOMAIN=www.example.com
+TRAEFIK_DASHBOARD_AUTH=admin:senhaadmin
+
 POSTGRES_DB=sensores
 POSTGRES_USER=sensores
 POSTGRES_PASSWORD=senhasegura123
