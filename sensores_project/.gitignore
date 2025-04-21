@@ -49,9 +49,6 @@ venv/
 *.pid
 *.seed
 *.bak
-docker-compose.override.yml
-docker-compose*.yml
-Dockerfile.*
 .docker/
 
 # VS Code
