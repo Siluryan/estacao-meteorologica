@@ -33,6 +33,13 @@ INSTALLED_APPS = [
 
 ASGI_APPLICATION = 'sensores_project.asgi.application'
 
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://www.agrostation.online',
+    'https://agrostation.online'
+]
+
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
