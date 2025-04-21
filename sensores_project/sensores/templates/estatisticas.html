@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Estatísticas dos Sensores{% endblock %}
+
+{% block content %}
+<h1>Estatísticas dos Sensores</h1>
+
+<div class="filtro-container">
+    <select id="periodo">
+        <option value="hoje">Hoje</option>
+        <option value="semana">Última Semana</option>
+        <option value="mes">Último Mês</option>
+    </select>
+    <button onclick="filtrarDados()">Filtrar</button>
+</div>
+
+<div class="card">
+    <h2>Médias</h2>
+    <table>
+        <tr>
+            <th>Métrica</th>
+            <th>Média</th>
+        </tr>
+        <tr>
+            <td>Temperatura</td>
+            <td>{{ media_temperatura }}°C</td>
+        </tr>
+        <tr>
+            <td>Umidade</td>
+            <td>{{ media_umidade }}%</td>
+        </tr>
+        <tr>
+            <td>Luminosidade</td>
+            <td>{{ media_luminosidade }} lux</td>
+        </tr>
+        <tr>
+            <td>Qualidade do Ar</td>
+            <td>{{ media_qualidade_ar }}</td>
+        </tr>
+        <tr>
+            <td>Chuva</td>
+            <td>{{ media_chuva }} mm</td>
+        </tr>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function filtrarDados() {
+        const periodo = document.getElementById('periodo').value;
+        window.location.href = `{% url 'estatisticas' %}?periodo=${periodo}`;
+    }
+</script>
+{% endblock %}

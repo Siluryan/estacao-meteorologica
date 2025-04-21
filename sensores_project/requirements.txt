@@ -1,0 +1,6 @@
+django
+channels
+daphne
+channels_redis
+paho-mqtt
+psycopg2-binary

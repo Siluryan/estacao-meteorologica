@@ -1,75 +1,84 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="UTF-8">
-  <title>Dashboard de Sensores</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f7f8;
-      margin: 0;
-      padding: 20px;
-    }
+{% extends 'base.html' %}
+{% load static %}
 
-    h1 {
-      text-align: center;
-      color: #333;
-      margin-bottom: 30px;
-    }
+{% block content %}
+<div class="container mt-4">
+    <h2>Dashboard em Tempo Real</h2>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Temperatura</h5>
+                    <p class="card-text" id="temperatura">--°C</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Umidade</h5>
+                    <p class="card-text" id="umidade">--%</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Luminosidade</h5>
+                    <p class="card-text" id="luminosidade">-- lux</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Qualidade do Ar</h5>
+                    <p class="card-text" id="qualidade_ar">--</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Chuva</h5>
+                    <p class="card-text" id="chuva">-- mm</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background-color: #fff;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      border-radius: 8px;
-      overflow: hidden;
-    }
+<script>
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const socket = new WebSocket(
+        `${wsProtocol}//${window.location.host}/ws/dashboard/`
+    );
 
-    th, td {
-      padding: 12px 15px;
-      text-align: center;
-    }
+    socket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        document.getElementById('temperatura').textContent = data.temperatura + '°C';
+        document.getElementById('umidade').textContent = data.umidade + '%';
+        document.getElementById('luminosidade').textContent = data.luminosidade + ' lux';
+        document.getElementById('qualidade_ar').textContent = data.qualidade_ar;
+        document.getElementById('chuva').textContent = data.chuva + ' mm';
+        console.log('Dados recebidos:', data);
+    };
 
-    th {
-      background-color: #007BFF;
-      color: white;
-      font-weight: bold;
-      text-transform: uppercase;
-    }
+    socket.onopen = function(e) {
+        console.log('WebSocket conectado'); 
+    };
 
-    tr:nth-child(even) {
-      background-color: #f2f2f2;
-    }
+    socket.onerror = function(e) {
+        console.error('Erro no WebSocket:', e); 
+    };
 
-    tr:hover {
-      background-color: #d0e7ff;
-    }
-  </style>
-</head>
-<body>
-
-  <h1>Dashboard de Sensores</h1>
-  <table>
-    <tr>
-      <th>Data</th>
-      <th>Temperatura (°C)</th>
-      <th>Umidade (%)</th>
-      <th>Luminosidade (lux)</th>
-      <th>Qualidade do Ar</th>
-      <th>Chuva</th>
-    </tr>
-    {% for dado in dados %}
-    <tr>
-      <td>{{ dado.data }}</td>
-      <td>{{ dado.temperatura }}</td>
-      <td>{{ dado.umidade }}</td>
-      <td>{{ dado.luminosidade }}</td>
-      <td>{{ dado.qualidade_ar }}</td>
-      <td>{{ dado.chuva }}</td>
-    </tr>
-    {% endfor %}
-  </table>
-
-</body>
-</html>
+    socket.onclose = function(e) {
+        console.log('WebSocket fechado:', e);
+        setTimeout(() => {
+            window.location.reload();
+        }, 5000);
+    };
+</script>
+{% endblock %}
