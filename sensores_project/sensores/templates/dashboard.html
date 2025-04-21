@@ -1,46 +1,84 @@
 {% extends 'base.html' %}
-
-{% block title %}Dashboard de Sensores{% endblock %}
+{% load static %}
 
 {% block content %}
-<h1>Dashboard de Sensores</h1>
-
-<div class="filtro-container">
-    <select id="periodo">
-        <option value="hoje">Hoje</option>
-        <option value="semana">Última Semana</option>
-        <option value="mes">Último Mês</option>
-    </select>
-    <button onclick="filtrarDados()">Filtrar</button>
+<div class="container mt-4">
+    <h2>Dashboard em Tempo Real</h2>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Temperatura</h5>
+                    <p class="card-text" id="temperatura">--°C</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Umidade</h5>
+                    <p class="card-text" id="umidade">--%</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Luminosidade</h5>
+                    <p class="card-text" id="luminosidade">-- lux</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Qualidade do Ar</h5>
+                    <p class="card-text" id="qualidade_ar">--</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Chuva</h5>
+                    <p class="card-text" id="chuva">-- mm</p>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<table>
-    <tr>
-        <th>Data</th>
-        <th>Temperatura (°C)</th>
-        <th>Umidade (%)</th>
-        <th>Luminosidade (lux)</th>
-        <th>Qualidade do Ar</th>
-        <th>Chuva</th>
-    </tr>
-    {% for dado in dados %}
-    <tr>
-        <td>{{ dado.data }}</td>
-        <td>{{ dado.temperatura }}</td>
-        <td>{{ dado.umidade }}</td>
-        <td>{{ dado.luminosidade }}</td>
-        <td>{{ dado.qualidade_ar }}</td>
-        <td>{{ dado.chuva }}</td>
-    </tr>
-    {% endfor %}
-</table>
-{% endblock %}
-
-{% block extra_js %}
 <script>
-    function filtrarDados() {
-        const periodo = document.getElementById('periodo').value;
-        window.location.href = `{% url 'dashboard' %}?periodo=${periodo}`;
-    }
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const socket = new WebSocket(
+        `${wsProtocol}//${window.location.host}/ws/dashboard/`
+    );
+
+    socket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        document.getElementById('temperatura').textContent = data.temperatura + '°C';
+        document.getElementById('umidade').textContent = data.umidade + '%';
+        document.getElementById('luminosidade').textContent = data.luminosidade + ' lux';
+        document.getElementById('qualidade_ar').textContent = data.qualidade_ar;
+        document.getElementById('chuva').textContent = data.chuva + ' mm';
+        console.log('Dados recebidos:', data);
+    };
+
+    socket.onopen = function(e) {
+        console.log('WebSocket conectado'); 
+    };
+
+    socket.onerror = function(e) {
+        console.error('Erro no WebSocket:', e); 
+    };
+
+    socket.onclose = function(e) {
+        console.log('WebSocket fechado:', e);
+        setTimeout(() => {
+            window.location.reload();
+        }, 5000);
+    };
 </script>
 {% endblock %}

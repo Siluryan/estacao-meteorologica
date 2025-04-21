@@ -2,28 +2,46 @@ import os
 import django
 import json
 import paho.mqtt.client as mqtt
+import time
+import logging
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger('mqtt_consumer')
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "sensores_project.settings")
 django.setup()
 
 from sensores.models import DadoSensor
 
-MQTT_BROKER = "localhost"
-MQTT_PORT = 1883
-MQTT_TOPIC = "estacao.meteorologica" 
+MQTT_BROKER = os.environ.get("MQTT_BROKER", "rabbitmq")
+MQTT_PORT = int(os.environ.get("MQTT_PORT", "1883"))
+MQTT_TOPIC = os.environ.get("MQTT_TOPIC", "estacao.meteorologica")
+MQTT_USERNAME = os.environ.get("MQTT_USERNAME", "admin")
+MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD", "admin123")
 
 def on_connect(client, userdata, flags, rc):
-    print("Conectado ao broker MQTT com código:", rc)
-    client.subscribe(MQTT_TOPIC)
+    if rc == 0:
+        logger.info(f"Conectado ao broker MQTT com sucesso")
+        logger.info(f"Inscrito no tópico: {MQTT_TOPIC}")
+        client.subscribe(MQTT_TOPIC)
+    else:
+        logger.error(f"Falha na conexão com código: {rc}")
 
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode())
-        print("Mensagem recebida:", payload)
+        logger.info(f"Mensagem recebida: {payload}")
 
         campos_esperados = ["temperatura", "umidade", "luminosidade", "qualidade_ar", "chuva"]
         if not all(campo in payload for campo in campos_esperados):
-            print("Payload incompleto:", payload)
+            logger.warning(f"Payload incompleto: {payload}")
             return
 
         dado = DadoSensor(
@@ -31,15 +49,51 @@ def on_message(client, userdata, msg):
             umidade=payload["umidade"],
             luminosidade=payload["luminosidade"],
             qualidade_ar=payload["qualidade_ar"],
-            chuva=payload["chuva"],        )
+            chuva=payload["chuva"],
+        )
         dado.save()
-        print("Salvo no banco:", dado)
+        logger.info(f"Salvo no banco: {dado.id} - {dado.temperatura}°C")
+
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "dashboard",
+            {
+                "type": "new_data",
+                "data": {
+                "temperatura": dado.temperatura,
+                "umidade": dado.umidade,
+                "luminosidade": dado.luminosidade,
+                "qualidade_ar": dado.qualidade_ar,
+                "chuva": dado.chuva,
+                "data_hora": dado.data.isoformat()
+            }
+            }
+        )
+
     except Exception as e:
-        print("Erro ao salvar:", e)
+        logger.error(f"Erro ao salvar: {e}")
+        logger.error(f"Payload que causou o erro: {msg.payload.decode()}")
+
+def connect_with_retry(client, max_retries=5, delay=5):
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"Tentativa {attempt + 1} de {max_retries} para conectar ao broker MQTT em {MQTT_BROKER}:{MQTT_PORT}")
+            client.connect(MQTT_BROKER, MQTT_PORT, 60)
+            return True
+        except Exception as e:
+            logger.error(f"Erro na tentativa {attempt + 1}: {e}")
+            if attempt < max_retries - 1:
+                logger.info(f"Aguardando {delay} segundos antes da próxima tentativa...")
+                time.sleep(delay)
+    return False
 
 client = mqtt.Client()
+client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
 client.on_connect = on_connect
 client.on_message = on_message
 
-client.connect(MQTT_BROKER, MQTT_PORT, 60)
-client.loop_forever()
+if connect_with_retry(client):
+    logger.info("Conectado com sucesso! Iniciando loop...")
+    client.loop_forever()
+else:
+    logger.error("Falha ao conectar após várias tentativas. Encerrando...")
