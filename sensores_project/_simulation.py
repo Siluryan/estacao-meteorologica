@@ -4,6 +4,10 @@ import json
 import random
 import paho.mqtt.client as mqtt
 import logging
+import socket
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,
@@ -12,11 +16,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger('mqtt_simulator')
 
-MQTT_BROKER = os.environ.get("MQTT_BROKER", "localhost")
+def is_rabbitmq_available():
+    try:
+        socket.gethostbyname("rabbitmq")
+        return True
+    except socket.gaierror:
+        return False
+
+MQTT_BROKER = os.environ.get("MQTT_BROKER", "rabbitmq")
+if MQTT_BROKER == "rabbitmq" and not is_rabbitmq_available():
+    MQTT_BROKER = "localhost"
+    logger.info("Usando localhost para conexão local")
+
 MQTT_PORT = int(os.environ.get("MQTT_PORT", "1883"))
 MQTT_TOPIC = os.environ.get("MQTT_TOPIC", "estacao.meteorologica")
-MQTT_USERNAME = os.environ.get("MQTT_USERNAME", "admin")
-MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD", "admin123")
+MQTT_USERNAME = os.environ.get("MQTT_USERNAME")
+MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD")
+
 
 def gerar_dados_sensores():
     return {
@@ -29,7 +45,9 @@ def gerar_dados_sensores():
 
 def main():
     client = mqtt.Client()
-    client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
+    
+    if MQTT_USERNAME and MQTT_PASSWORD:
+        client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
     
     def on_connect(client, userdata, flags, rc):
         if rc == 0:

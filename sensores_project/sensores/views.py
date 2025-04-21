@@ -29,7 +29,7 @@ def estatisticas(request):
         dados = DadoSensor.objects.filter(data__date=hoje.date())
     elif periodo == 'semana':
         dados = DadoSensor.objects.filter(data__gte=hoje - timedelta(days=7))
-    else:  # mes
+    else:
         dados = DadoSensor.objects.filter(data__gte=hoje - timedelta(days=30))
     
     context = {
