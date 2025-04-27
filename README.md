@@ -38,3 +38,35 @@ source env/bin/activate
 pip install -r requirements.txt
 python _simulation.py
 ```
+
+### Criar um service para permitir reinicialização do servidor
+
+#### Crie um arquivo em /etc/systemd/system/docker-compose-app.service
+
+```bash
+[Unit]
+Description=Docker Compose Application Service
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=seu-usuario-linux 
+Group=seu-grupo-linux
+WorkingDirectory=/home/usuario/caminho-para-o-seu-docker-compose
+
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+ExecStart=/usr/local/bin/docker-compose up --build -d
+ExecStop=/usr/local/bin/docker-compose down
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+```
+
+#### Execute os seguintes comandos
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable docker-compose-app    
+sudo systemctl start docker-compose-app 
+```
