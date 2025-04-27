@@ -22,7 +22,7 @@ jobs:
           role-session-name: pi5-start-ec2-instance
 
       - name: Start EC2 Instance
-        uses: aws-actions/aws-cli-action@v2
+        uses: aws-actions/aws-cli-action@v1
         with:
           aws-region: us-east-1
           inline: |
