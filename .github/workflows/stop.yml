@@ -1,0 +1,29 @@
+name: Stop EC2
+
+on:
+  schedule:
+    - cron: '0 3 * * 2-6'
+    - cron: '59 2 * * 1'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  stop-ec2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::914256152987:role/GitHubActionsRole
+          role-session-name: pi5-stop-ec2-instance
+
+      - name: Stop EC2 Instance
+        uses: aws-actions/aws-cli-action@v2
+        with:
+          aws-region: us-east-1
+          inline: |
+            aws ec2 stop-instances --instance-ids ${{ secrets.PI5_EC2_INSTANCE_ID }}
