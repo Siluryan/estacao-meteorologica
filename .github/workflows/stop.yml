@@ -22,7 +22,7 @@ jobs:
           role-session-name: pi5-stop-ec2-instance
 
       - name: Stop EC2 Instance
-        uses: aws-actions/aws-cli-action@v2
+        uses: aws-actions/aws-cli-action@v1
         with:
           aws-region: us-east-1
           inline: |
