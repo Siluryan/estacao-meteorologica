@@ -38,7 +38,7 @@ def on_message(client, userdata, msg):
         payload = json.loads(msg.payload.decode())
         logger.info(f"Mensagem recebida: {payload}")
 
-        campos_esperados = ["temperatura", "umidade", "luminosidade", "qualidade_ar", "chuva"]
+        campos_esperados = ["temperatura", "umidade", "luminosidade", "gas_detectado", "chuva"]
         if not all(campo in payload for campo in campos_esperados):
             logger.warning(f"Payload incompleto: {payload}")
             return
@@ -47,35 +47,57 @@ def on_message(client, userdata, msg):
             temperatura=payload["temperatura"],
             umidade=payload["umidade"],
             luminosidade=payload["luminosidade"],
-            qualidade_ar=payload["qualidade_ar"],
-            chuva=payload["chuva"],
+            gas_detectado=payload["gas_detectado"],
+            chuva=1.0 if payload["chuva"] else 0.0,
+            qualidade_ar=0,
         )
+        
+        if "corrente" in payload:
+            dado.corrente = payload["corrente"]
+        if "pm1_0" in payload:
+            dado.pm1_0 = payload["pm1_0"]
+        if "pm2_5" in payload:
+            dado.pm2_5 = payload["pm2_5"]
+        if "pm10" in payload:
+            dado.pm10 = payload["pm10"]
+            
         dado.save()
-        logger.info(f"Salvo no banco: {dado.id} - {dado.temperatura}°C")
-
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            "dashboard",
-            {
-                "type": "sensor_update",
-                "data": {
-                    "temperatura": dado.temperatura,
-                    "umidade": dado.umidade,
-                    "luminosidade": dado.luminosidade,
-                    "qualidade_ar": dado.qualidade_ar,
-                    "chuva": dado.chuva,
-                    "data_hora": dado.data.isoformat()
+        logger.info(f"Dado salvo no banco de dados com ID: {dado.id}")
+        
+        dados_ws = {
+            "temperatura": dado.temperatura,
+            "umidade": dado.umidade,
+            "luminosidade": dado.luminosidade,
+            "gas_detectado": dado.gas_detectado,
+            "chuva": bool(dado.chuva), 
+            "corrente": dado.corrente,
+            "pm1_0": dado.pm1_0,
+            "pm2_5": dado.pm2_5,
+            "pm10": dado.pm10,
+            "data_hora": dado.data.isoformat()
+        }
+        
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                "dashboard",
+                {
+                    "type": "sensor_update",
+                    "data": dados_ws
                 }
-            }
-        )
-        logger.info("Dados enviados para o WebSocket")
-
+            )
+            logger.info("Dados enviados para o WebSocket com sucesso")
+        except Exception as e:
+            logger.error(f"Erro ao enviar dados para o WebSocket: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
     except json.JSONDecodeError as e:
         logger.error(f"Erro ao decodificar JSON: {e}")
         logger.error(f"Payload inválido: {msg.payload.decode()}")
     except Exception as e:
         logger.error(f"Erro ao processar mensagem: {e}")
-        logger.error(f"Payload que causou o erro: {msg.payload.decode()}")
+        import traceback
+        logger.error(traceback.format_exc())
 
 def connect_with_retry(client, max_retries=5, delay=5):
     for attempt in range(max_retries):

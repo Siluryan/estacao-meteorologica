@@ -29,18 +29,33 @@ if MQTT_BROKER == "rabbitmq" and not is_rabbitmq_available():
     logger.info("Usando localhost para conexão local")
 
 MQTT_PORT = int(os.environ.get("MQTT_PORT", "1883"))
-MQTT_TOPIC = os.environ.get("MQTT_TOPIC", "estacao.meteorologica")
-MQTT_USERNAME = os.environ.get("MQTT_USERNAME")
-MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD")
+MQTT_TOPIC = os.environ.get("MQTT_TOPIC", "estacao.meteorologica.local")
+MQTT_USERNAME = os.environ.get("MQTT_USERNAME", "mqtt_local_user")
+MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD", "mqttlocalpassword")
 
 
 def gerar_dados_sensores():
+    temperatura = round(random.uniform(15.0, 35.0), 1)
+    umidade = round(random.uniform(30.0, 90.0), 1)
+    luminosidade = round(random.uniform(100.0, 1000.0), 1)
+    
+    chuva = random.choice([True, False])
+    gas_detectado = random.choice([True, False])
+    corrente = round(random.uniform(500.0, 3500.0), 1)
+    pm1_0 = round(random.uniform(0.0, 50.0), 1)
+    pm2_5 = round(random.uniform(0.0, 75.0), 1)
+    pm10 = round(random.uniform(0.0, 100.0), 1)
+    
     return {
-        "temperatura": round(random.uniform(15.0, 35.0), 1),
-        "umidade": round(random.uniform(30.0, 90.0), 1), 
-        "luminosidade": round(random.uniform(990.0, 1035.0), 1),
-        "qualidade_ar": round(random.uniform(990.0, 1035.0), 1),
-        "chuva": round(random.uniform(0.0, 10.0), 1)
+        "temperatura": temperatura,
+        "umidade": umidade, 
+        "luminosidade": luminosidade,
+        "chuva": chuva,
+        "gas_detectado": gas_detectado,
+        "corrente": corrente,
+        "pm1_0": pm1_0,
+        "pm2_5": pm2_5,
+        "pm10": pm10
     }
 
 def main():
@@ -51,7 +66,8 @@ def main():
     
     def on_connect(client, userdata, flags, rc):
         if rc == 0:
-            logger.info("Conectado ao broker MQTT com sucesso!")
+            logger.info(f"Conectado ao broker MQTT com sucesso! ({MQTT_BROKER}:{MQTT_PORT})")
+            logger.info(f"Tópico: {MQTT_TOPIC}")
         else:
             logger.error(f"Falha na conexão com código: {rc}")
     

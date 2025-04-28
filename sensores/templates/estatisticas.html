@@ -15,7 +15,7 @@
 </div>
 
 <div class="card">
-    <h2>Médias</h2>
+    <h2>Médias - Sensores Principais</h2>
     <table>
         <tr>
             <th>Métrica</th>
@@ -34,12 +34,48 @@
             <td>{{ media_luminosidade }} lux</td>
         </tr>
         <tr>
-            <td>Qualidade do Ar</td>
-            <td>{{ media_qualidade_ar }}</td>
+            <td>Chuva</td>
+            <td>{{ media_chuva }} ({{ media_chuva|floatformat:0 }}% do tempo)</td>
+        </tr>
+    </table>
+</div>
+
+<div class="card">
+    <h2>Médias - Sensores de Segurança</h2>
+    <table>
+        <tr>
+            <th>Métrica</th>
+            <th>Valor</th>
         </tr>
         <tr>
-            <td>Chuva</td>
-            <td>{{ media_chuva }} mm</td>
+            <td>Corrente</td>
+            <td>{{ media_corrente }} mA</td>
+        </tr>
+        <tr>
+            <td>Detecções de Gás</td>
+            <td>{{ deteccoes_gas }} ({{ percentual_gas }}% do tempo)</td>
+        </tr>
+    </table>
+</div>
+
+<div class="card">
+    <h2>Médias - Partículas no Ar</h2>
+    <table>
+        <tr>
+            <th>Métrica</th>
+            <th>Média</th>
+        </tr>
+        <tr>
+            <td>PM1.0</td>
+            <td>{{ media_pm1_0 }} µg/m³</td>
+        </tr>
+        <tr>
+            <td>PM2.5</td>
+            <td>{{ media_pm2_5 }} µg/m³</td>
+        </tr>
+        <tr>
+            <td>PM10</td>
+            <td>{{ media_pm10 }} µg/m³</td>
         </tr>
     </table>
 </div>
