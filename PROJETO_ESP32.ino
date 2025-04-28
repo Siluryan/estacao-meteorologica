@@ -1,3 +1,6 @@
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
 #include <DHT.h>
 #include <HardwareSerial.h>
 
@@ -26,13 +29,77 @@ const float OFFSET = 2.2;             // Novo Offset ajustado para 2,2V
 // Definir o limite de corrente máxima
 const float LIMITE_CORRENTE = 4000.0;  // Limite de 4A (4000mA)
 
+// Configurações Wi-Fi
+const char* WIFI_SSID = "REDE_WIFI";
+const char* WIFI_PASSWORD = "SENHA_WIFI";
+
+// Configurações MQTT
+const char* MQTT_BROKER = "www.agrostation.online";
+const int MQTT_PORT = 1883;
+const char* MQTT_USERNAME = "usuario";
+const char* MQTT_PASSWORD = "senha";
+const char* MQTT_TOPIC = "estacao/meteorologica";
+
 // Instâncias
 DHT dht(DHTPIN, DHTTYPE);
 HardwareSerial pmsSerial(1);
+WiFiClient espClient;
+PubSubClient mqttClient(espClient);
 
 // Variáveis globais para partículas
 uint16_t pm1_0 = 0, pm2_5 = 0, pm10 = 0;
 unsigned long ultimoTempo = 0;
+
+void connectWiFi() {
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.print("Conectando ao Wi-Fi");
+  
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  
+  Serial.println("\nConectado! IP: " + WiFi.localIP());
+}
+
+void connectMQTT() {
+  while (!mqttClient.connected()) {
+    Serial.print("Conectando ao broker MQTT...");
+    
+    if (mqttClient.connect("ESP32Client", MQTT_USERNAME, MQTT_PASSWORD)) {
+      Serial.println("Conectado!");
+    } else {
+      Serial.print("Falha. Código: ");
+      Serial.print(mqttClient.state());
+      Serial.println(" Tentando novamente em 5s...");
+      delay(5000);
+    }
+  }
+}
+
+void enviarDadosMQTT(float temperatura, float humidade, float lux, bool estaChovendo, bool gasDetectado, float corrente) {
+  StaticJsonDocument<256> doc;
+  
+  doc["temperatura"] = temperatura;
+  doc["umidade"] = humidade;
+  doc["luminosidade"] = lux;
+  doc["chuva"] = estaChovendo;
+  doc["gas_detectado"] = gasDetectado;
+  doc["corrente"] = corrente;
+  doc["pm1_0"] = pm1_0;
+  doc["pm2_5"] = pm2_5;
+  doc["pm10"] = pm10;
+
+  char payload[256];
+  serializeJson(doc, payload);
+  
+  if (!mqttClient.connected()) {
+    connectMQTT();
+  }
+  
+  mqttClient.publish(MQTT_TOPIC, payload);
+  Serial.println("Dados enviados via MQTT: " + String(payload));
+}
 
 void setup() {
   Serial.begin(9600);
@@ -47,6 +114,12 @@ void setup() {
   // Iniciar serial do PMS3003
   pmsSerial.begin(9600, SERIAL_8N1, PMS_TX_PIN, -1);
 
+  // Conectar ao Wi-Fi
+  connectWiFi();
+  
+  // Configurar MQTT
+  mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
+
   Serial.println("Sistema Iniciado...");
 }
 
@@ -58,9 +131,9 @@ void loop() {
         uint8_t buffer[30];
         pmsSerial.readBytes(buffer, 30);
 
-        pm1_0  = (buffer[2] << 8) | buffer[3];
-        pm2_5  = (buffer[4] << 8) | buffer[5];
-        pm10   = (buffer[6] << 8) | buffer[7];
+        pm1_0 = (buffer[2] << 8) | buffer[3];
+        pm2_5 = (buffer[4] << 8) | buffer[5];
+        pm10 = (buffer[6] << 8) | buffer[7];
       }
     }
   }
@@ -75,57 +148,51 @@ void loop() {
 
     if (isnan(humidade) || isnan(temperatura)) {
       Serial.println("Falha na leitura do sensor DHT22!");
-    } else {
-      Serial.print("HUMIDADE: ");
-      Serial.print(humidade);
-      Serial.print(" %\tTEMPERATURA: ");
-      Serial.print(temperatura);
-      Serial.println(" ºC");
+      return;
     }
 
     // Leitura do sensor de gás
     bool gasDetectado = digitalRead(PINO_SENSOR_GAS) == LOW;
-    Serial.print("Sensor de Gás: ");
-    Serial.println(gasDetectado ? "GÁS DETECTADO" : "Sem gás detectado");
 
     // Leitura do sensor de luminosidade (TEMT6000)
     int analogValue = analogRead(TEMT6000_PIN);
     float voltage = analogValue * (3.3 / 4095.0);
     float lux = voltage * 200.0;
 
-    Serial.print("Luz - ADC: ");
-    Serial.print(analogValue);
-    Serial.print(" | Tensão: ");
-    Serial.print(voltage, 2);
-    Serial.print(" V | Lux: ");
-    Serial.print(lux, 1);
-    Serial.print(" -> ");
-    Serial.println(lux < LUX_THRESHOLD ? "Está ESCURO" : "Está CLARO");
-
     // Leitura do sensor de chuva
     bool estaChovendo = digitalRead(PINO_SENSOR_CHUVA) == LOW;
-    Serial.print("Sensor de Chuva: ");
-    Serial.println(estaChovendo ? "ESTÁ CHOVENDO" : "SEM CHUVA");
 
     // Leitura da corrente (ACS712)
     int acs712Value = analogRead(ACS712_PIN);
-    float sensorVoltage = (acs712Value * VCC) / ADC_RESOLUTION;  // Converte a leitura em tensão
+    float sensorVoltage = (acs712Value * VCC) / ADC_RESOLUTION;
     float corrente = (sensorVoltage - OFFSET) / ACS712_SENSIBILIDADE;
+    corrente = corrente * 1000.0; // Convertendo para mA
 
-    Serial.print("Corrente medida pelo ACS712: ");
-    Serial.print(corrente * 1000.0, 2); // Converte para mA (miliampères)
+    // Enviar dados via MQTT
+    enviarDadosMQTT(temperatura, humidade, lux, estaChovendo, gasDetectado, corrente);
+
+    // Exibir dados no serial (opcional)
+    Serial.print("HUMIDADE: ");
+    Serial.print(humidade);
+    Serial.print(" %\tTEMPERATURA: ");
+    Serial.print(temperatura);
+    Serial.println(" ºC");
+
+    Serial.print("Sensor de Gás: ");
+    Serial.println(gasDetectado ? "GÁS DETECTADO" : "Sem gás detectado");
+
+    Serial.print("Luz - ADC: ");
+    Serial.print(analogValue);
+    Serial.print(" | Lux: ");
+    Serial.print(lux, 1);
+    Serial.println(lux < LUX_THRESHOLD ? " -> Está ESCURO" : " -> Está CLARO");
+
+    Serial.print("Sensor de Chuva: ");
+    Serial.println(estaChovendo ? "ESTÁ CHOVENDO" : "SEM CHUVA");
+
+    Serial.print("Corrente: ");
+    Serial.print(corrente, 2);
     Serial.println(" mA");
-
-    // Avaliação da corrente
-    if (corrente * 1000.0 > LIMITE_CORRENTE) {
-        Serial.println("ALERTA: Corrente muito alta para este circuito! Consumo acima de 4A.");
-    } else if (corrente * 1000.0 > 2500.0) {
-        Serial.println("Corrente elevada. Verifique o consumo dos componentes.");
-    } else if (corrente * 1000.0 > 1500.0) {
-        Serial.println("Corrente razoável para o ESP32. Pode ser que o Wi-Fi ou outros periféricos estejam consumindo mais.");
-    } else {
-        Serial.println("Corrente dentro do esperado para um circuito de baixo consumo.");
-    }
 
     // Exibir os dados do PMS3003
     Serial.print("PMS3003 -> PM1.0: ");
@@ -138,4 +205,7 @@ void loop() {
 
     Serial.println("\n------------------------------\n");
   }
+
+  // Manter conexão MQTT ativa
+  mqttClient.loop();
 }
