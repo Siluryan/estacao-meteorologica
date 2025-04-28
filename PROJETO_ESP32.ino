@@ -23,6 +23,9 @@ const int ADC_RESOLUTION = 4095;      // Resolução ADC
 const float ACS712_SENSIBILIDADE = 0.066; // Sensibilidade em V/A para o modelo 30A (66mV/A)
 const float OFFSET = 2.2;             // Novo Offset ajustado para 2,2V
 
+// Definir o limite de corrente máxima
+const float LIMITE_CORRENTE = 4000.0;  // Limite de 4A (4000mA)
+
 // Instâncias
 DHT dht(DHTPIN, DHTTYPE);
 HardwareSerial pmsSerial(1);
@@ -107,34 +110,21 @@ void loop() {
     // Leitura da corrente (ACS712)
     int acs712Value = analogRead(ACS712_PIN);
     float sensorVoltage = (acs712Value * VCC) / ADC_RESOLUTION;  // Converte a leitura em tensão
-
-    // Exibe a tensão lida
-    Serial.print("Tensão lida do ACS712 (OUT): ");
-    Serial.print(sensorVoltage, 3);  // Exibe com 3 casas decimais
-    Serial.println(" V");
-
-    // Calcula a corrente com base na sensibilidade
     float corrente = (sensorVoltage - OFFSET) / ACS712_SENSIBILIDADE;
 
-    // Exibe o valor da corrente
     Serial.print("Corrente medida pelo ACS712: ");
     Serial.print(corrente * 1000.0, 2); // Converte para mA (miliampères)
     Serial.println(" mA");
 
-    // Avaliação da corrente considerando que o ideal é até 1A (1000mA)
-    if (corrente * 1000.0 > 1000.0) {
-        Serial.println("Corrente muito alta para este circuito. Verifique se há dispositivos consumindo mais energia do que o esperado.");
-    } else if (corrente * 1000.0 > 700.0) {
-        Serial.println("Corrente elevada. Verifique o consumo dos componentes do seu circuito.");
-    } else if (corrente * 1000.0 > 200.0) {
+    // Avaliação da corrente
+    if (corrente * 1000.0 > LIMITE_CORRENTE) {
+        Serial.println("ALERTA: Corrente muito alta para este circuito! Consumo acima de 4A.");
+    } else if (corrente * 1000.0 > 2500.0) {
+        Serial.println("Corrente elevada. Verifique o consumo dos componentes.");
+    } else if (corrente * 1000.0 > 1500.0) {
         Serial.println("Corrente razoável para o ESP32. Pode ser que o Wi-Fi ou outros periféricos estejam consumindo mais.");
     } else {
         Serial.println("Corrente dentro do esperado para um circuito de baixo consumo.");
-    }
-
-    // Se a corrente for negativa ou fora da faixa esperada
-    if (corrente < 0) {
-        Serial.println("Corrente negativa (verifique a direção do fluxo de corrente).");
     }
 
     // Exibir os dados do PMS3003
