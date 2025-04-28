@@ -5,7 +5,6 @@ docker-compose up --build -d
 ```
 
 ### Configuração do arquivo .env
-
 ```sh
 ACME_EMAIL=example@gmail.com
 DOMAIN=www.example.com
@@ -28,6 +27,30 @@ DATABASE_URL=postgres://sensores:senhasegura123@db:5432/sensores
 DJANGO_SUPERUSER_USERNAME=admin
 DJANGO_SUPERUSER_EMAIL=admin@gmail.com
 DJANGO_SUPERUSER_PASSWORD=adminsenha123
+```
+
+### Configuração do arquivo .env.local
+```sh
+POSTGRES_DB=sensores_local
+POSTGRES_USER=sensores_local
+POSTGRES_PASSWORD=localpassword
+
+MQTT_BROKER=rabbitmq
+MQTT_PORT=1883
+MQTT_TOPIC=estacao.meteorologica.local
+MQTT_USERNAME=mqtt_local_user
+MQTT_PASSWORD=mqttlocalpassword
+
+DEBUG=1
+SECRET_KEY=local_secret_key_for_development_only
+DATABASE_URL=postgres://sensores_local:localpassword@db:5432/sensores_local
+
+DJANGO_SUPERUSER_EMAIL=admin_local@example.com
+DJANGO_SUPERUSER_PASSWORD=adminlocalpass
+DJANGO_SUPERUSER_USERNAME=admin
+
+RABBITMQ_DEFAULT_USER=guest 
+RABBITMQ_DEFAULT_PASS=guest
 ```
 
 ### Execução do simulation.py
