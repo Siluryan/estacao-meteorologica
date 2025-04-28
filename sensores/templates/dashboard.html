@@ -8,86 +8,308 @@
         <i class="fas fa-clock"></i> 
         Última atualização: <span id="data_hora" class="fw-bold">--</span>
     </p>
-    <div class="row">
-        <div class="col-md-4">
+    
+    <div class="dashboard-cards">
+        <div class="card-container">
             <div class="card">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="sensor-data">
                         <div>
                             <h5 class="card-title">Temperatura</h5>
                             <p class="card-text h4"><span id="temperatura">--</span>°C</p>
                         </div>
-                        <div style="width: 100px; height: 50px;">
+                        <div style="width: 60px; height: 40px;">
                             <canvas id="tempChart"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="card-container">
             <div class="card">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="sensor-data">
                         <div>
                             <h5 class="card-title">Umidade</h5>
                             <p class="card-text h4"><span id="umidade">--</span>%</p>
                         </div>
-                        <div style="width: 100px; height: 50px;">
+                        <div style="width: 60px; height: 40px;">
                             <canvas id="umidChart"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="card-container">
             <div class="card">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="sensor-data">
                         <div>
                             <h5 class="card-title">Luminosidade</h5>
                             <p class="card-text h4"><span id="luminosidade">--</span> lux</p>
                         </div>
-                        <div style="width: 100px; height: 50px;">
+                        <div style="width: 60px; height: 40px;">
                             <canvas id="luxChart"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    <div class="row mt-4">
-        <div class="col-md-6">
+        <div class="card-container">
             <div class="card">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="sensor-data">
                         <div>
-                            <h5 class="card-title">Qualidade do Ar</h5>
-                            <p class="card-text h4"><span id="qualidade_ar">--</span></p>
+                            <h5 class="card-title">Chuva</h5>
+                            <p class="card-text h4"><span id="chuva">--</span></p>
+                            <small class="text-muted">Detecção de precipitação</small>
                         </div>
-                        <div style="width: 100px; height: 50px;">
-                            <canvas id="arChart"></canvas>
+                        <div class="status-indicator">
+                            <div id="chuva_indicator" class="indicator"></div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
+    </div>
+    
+    <h3 class="mt-4">Monitoramento de Segurança</h3>
+    <p class="text-muted mb-2">Sensores para detecção de riscos e monitoramento de consumo elétrico</p>
+    <div class="dashboard-cards mt-2">
+        <div class="card-container">
             <div class="card">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="sensor-data">
                         <div>
-                            <h5 class="card-title">Chuva</h5>
-                            <p class="card-text h4"><span id="chuva">--</span> mm</p>
+                            <h5 class="card-title">Detecção de Gás</h5>
+                            <p class="card-text h4"><span id="gas_detectado">--</span></p>
+                            <small class="text-muted">Alerta de vazamento de gás</small>
                         </div>
-                        <div style="width: 100px; height: 50px;">
-                            <canvas id="chuvaChart"></canvas>
+                        <div class="status-indicator">
+                            <div id="gas_indicator" class="indicator"></div>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+        <div class="card-container">
+            <div class="card">
+                <div class="card-body">
+                    <div class="sensor-data">
+                        <div>
+                            <h5 class="card-title">Consumo Elétrico</h5>
+                            <p class="card-text h4"><span id="corrente">--</span> mA</p>
+                            <small class="text-muted" id="corrente_status">Aguardando leitura...</small>
+                        </div>
+                        <div style="width: 60px; height: 40px;">
+                            <canvas id="correnteChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <h3 class="mt-4">Qualidade do Ar (PMS3003)</h3>
+    <p class="text-muted mb-2">Monitoramento de partículas suspensas no ar - valores em µg/m³</p>
+    <div class="dashboard-cards mt-2">
+        <div class="card-container">
+            <div class="card">
+                <div class="card-body">
+                    <div class="sensor-data">
+                        <div>
+                            <h5 class="card-title">PM1.0</h5>
+                            <p class="card-text h4"><span id="pm1_0">--</span> µg/m³</p>
+                            <small class="text-muted" id="pm1_status">Partículas ultrafinas</small>
+                        </div>
+                        <div class="quality-indicator">
+                            <div id="pm1_quality" class="quality-badge">--</div>
+                        </div>
+                        <div style="width: 60px; height: 40px; display: none;">
+                            <canvas id="pm1Chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-container">
+            <div class="card">
+                <div class="card-body">
+                    <div class="sensor-data">
+                        <div>
+                            <h5 class="card-title">PM2.5</h5>
+                            <p class="card-text h4"><span id="pm2_5">--</span> µg/m³</p>
+                            <small class="text-muted" id="pm25_status">Partículas finas respiráveis</small>
+                        </div>
+                        <div class="quality-indicator">
+                            <div id="pm25_quality" class="quality-badge">--</div>
+                        </div>
+                        <div style="width: 60px; height: 40px; display: none;">
+                            <canvas id="pm25Chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-container">
+            <div class="card">
+                <div class="card-body">
+                    <div class="sensor-data">
+                        <div>
+                            <h5 class="card-title">PM10</h5>
+                            <p class="card-text h4"><span id="pm10">--</span> µg/m³</p>
+                            <small class="text-muted" id="pm10_status">Partículas inaláveis</small>
+                        </div>
+                        <div class="quality-indicator">
+                            <div id="pm10_quality" class="quality-badge">--</div>
+                        </div>
+                        <div style="width: 60px; height: 40px; display: none;">
+                            <canvas id="pm10Chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-3 mb-4">
+        <div class="air-quality-legend">
+            <span class="legend-item"><span class="legend-color" style="background-color: #4CAF50;"></span> Bom</span>
+            <span class="legend-item"><span class="legend-color" style="background-color: #FFEB3B;"></span> Moderado</span>
+            <span class="legend-item"><span class="legend-color" style="background-color: #FF9800;"></span> Ruim</span>
+            <span class="legend-item"><span class="legend-color" style="background-color: #F44336;"></span> Muito Ruim</span>
+            <span class="legend-item"><span class="legend-color" style="background-color: #9C27B0;"></span> Péssimo</span>
         </div>
     </div>
 </div>
+
+<style>
+    .dashboard-cards {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 8px;
+        justify-content: space-between;
+    }
+    
+    .card-container {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .card {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .card-body {
+        padding: 10px;
+    }
+    
+    .card-title {
+        font-size: 0.9rem;
+        margin-bottom: 5px;
+    }
+    
+    .card-text {
+        font-size: 1.1rem;
+        margin-bottom: 0;
+    }
+    
+    .sensor-data {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .indicator {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background-color: #ccc;
+    }
+    
+    .indicator.active {
+        background-color: #ff4d4d;
+        box-shadow: 0 0 10px #ff4d4d;
+        animation: pulse 1.5s infinite;
+    }
+    
+    .quality-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .quality-badge {
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        color: white;
+        background-color: #ccc;
+    }
+    
+    .air-quality-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        font-size: 0.8rem;
+    }
+    
+    .legend-color {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+        margin-right: 4px;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    
+    @media (max-width: 768px) {
+        .dashboard-cards {
+            flex-wrap: wrap;
+        }
+        
+        .card-container {
+            flex: 0 0 48%;
+            margin-bottom: 8px;
+        }
+        
+        .card-title {
+            font-size: 0.8rem;
+        }
+        
+        .card-text {
+            font-size: 1rem;
+        }
+        
+        .card-body {
+            padding: 8px;
+        }
+        
+        .air-quality-legend {
+            font-size: 0.7rem;
+        }
+    }
+</style>
 
 <!-- Adicione o Chart.js antes do seu script -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -99,8 +321,10 @@
     const tempData = Array(maxDataPoints).fill(0);
     const umidData = Array(maxDataPoints).fill(0);
     const luxData = Array(maxDataPoints).fill(0);
-    const arData = Array(maxDataPoints).fill(0);
-    const chuvaData = Array(maxDataPoints).fill(0);
+    const correnteData = Array(maxDataPoints).fill(0);
+    const pm1Data = Array(maxDataPoints).fill(0);
+    const pm25Data = Array(maxDataPoints).fill(0);
+    const pm10Data = Array(maxDataPoints).fill(0);
 
     const chartConfig = {
         type: 'bar',
@@ -125,32 +349,51 @@
         }
     };
 
-    const tempChart = new Chart(
-        document.getElementById('tempChart').getContext('2d'),
+    function createChartIfElementExists(elementId, config) {
+        const canvas = document.getElementById(elementId);
+        if (canvas) {
+            try {
+                return new Chart(canvas.getContext('2d'), config);
+            } catch (e) {
+                console.error(`Erro ao criar gráfico para ${elementId}:`, e);
+                return null;
+            }
+        }
+        console.warn(`Elemento ${elementId} não encontrado`);
+        return null;
+    }
+
+    const tempChart = createChartIfElementExists('tempChart',
         {...chartConfig, data: {...chartConfig.data, datasets: [{...chartConfig.data.datasets[0], backgroundColor: 'rgba(255, 99, 132, 0.2)', borderColor: 'rgba(255, 99, 132, 1)'}]}}
     );
 
-    const umidChart = new Chart(
-        document.getElementById('umidChart').getContext('2d'),
+    const umidChart = createChartIfElementExists('umidChart',
         {...chartConfig, data: {...chartConfig.data, datasets: [{...chartConfig.data.datasets[0], backgroundColor: 'rgba(54, 162, 235, 0.2)', borderColor: 'rgba(54, 162, 235, 1)'}]}}
     );
 
-    const luxChart = new Chart(
-        document.getElementById('luxChart').getContext('2d'),
+    const luxChart = createChartIfElementExists('luxChart',
         {...chartConfig, data: {...chartConfig.data, datasets: [{...chartConfig.data.datasets[0], backgroundColor: 'rgba(255, 206, 86, 0.2)', borderColor: 'rgba(255, 206, 86, 1)'}]}}
     );
-
-    const arChart = new Chart(
-        document.getElementById('arChart').getContext('2d'),
-        {...chartConfig, data: {...chartConfig.data, datasets: [{...chartConfig.data.datasets[0], backgroundColor: 'rgba(75, 192, 192, 0.2)', borderColor: 'rgba(75, 192, 192, 1)'}]}}
+    
+    const correnteChart = createChartIfElementExists('correnteChart',
+        {...chartConfig, data: {...chartConfig.data, datasets: [{...chartConfig.data.datasets[0], backgroundColor: 'rgba(255, 159, 64, 0.2)', borderColor: 'rgba(255, 159, 64, 1)'}]}}
     );
-
-    const chuvaChart = new Chart(
-        document.getElementById('chuvaChart').getContext('2d'),
-        {...chartConfig, data: {...chartConfig.data, datasets: [{...chartConfig.data.datasets[0], backgroundColor: 'rgba(153, 102, 255, 0.2)', borderColor: 'rgba(153, 102, 255, 1)'}]}}
+    
+    const pm1Chart = createChartIfElementExists('pm1Chart',
+        {...chartConfig, data: {...chartConfig.data, datasets: [{...chartConfig.data.datasets[0], backgroundColor: 'rgba(201, 203, 207, 0.2)', borderColor: 'rgba(201, 203, 207, 1)'}]}}
+    );
+    
+    const pm25Chart = createChartIfElementExists('pm25Chart',
+        {...chartConfig, data: {...chartConfig.data, datasets: [{...chartConfig.data.datasets[0], backgroundColor: 'rgba(255, 99, 71, 0.2)', borderColor: 'rgba(255, 99, 71, 1)'}]}}
+    );
+    
+    const pm10Chart = createChartIfElementExists('pm10Chart',
+        {...chartConfig, data: {...chartConfig.data, datasets: [{...chartConfig.data.datasets[0], backgroundColor: 'rgba(128, 0, 128, 0.2)', borderColor: 'rgba(128, 0, 128, 1)'}]}}
     );
 
     function atualizarGrafico(chart, novoValor, dataArray) {
+        if (!chart) return;
+        
         dataArray.shift();
         dataArray.push(novoValor);
         chart.data.datasets[0].data = dataArray;
@@ -169,38 +412,226 @@
         });
     }
     
-    function conectarWebSocket() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        ws = new WebSocket(`${protocol}//${window.location.host}/ws/dashboard/`);
+    function atualizarIndicadorGas(detectado) {
+        const indicator = document.getElementById('gas_indicator');
+        const statusText = document.getElementById('gas_detectado');
         
-        ws.onmessage = function(event) {
-            const data = JSON.parse(event.data);
+        if (detectado) {
+            indicator.classList.add('active');
+            statusText.textContent = 'DETECTADO';
+            statusText.style.color = '#ff4d4d';
+        } else {
+            indicator.classList.remove('active');
+            statusText.textContent = 'Normal';
+            statusText.style.color = '#4CAF50';
+        }
+    }
+    
+    function atualizarIndicadorChuva(chovendo) {
+        const indicator = document.getElementById('chuva_indicator');
+        const statusText = document.getElementById('chuva');
+        
+        if (chovendo) {
+            indicator.classList.add('active');
+            statusText.textContent = 'DETECTADA';
+            statusText.style.color = '#4287f5';
+        } else {
+            indicator.classList.remove('active');
+            statusText.textContent = 'Não detectada';
+            statusText.style.color = '#4CAF50';
+        }
+    }
+    
+    function avaliarCorrente(corrente) {
+        const statusElement = document.getElementById('corrente_status');
+        
+        if (corrente > 4000) {
+            statusElement.textContent = 'ALERTA: Consumo muito alto!';
+            statusElement.style.color = '#F44336';
+        } else if (corrente > 2500) {
+            statusElement.textContent = 'Consumo elevado';
+            statusElement.style.color = '#FF9800';
+        } else if (corrente > 1500) {
+            statusElement.textContent = 'Consumo moderado';
+            statusElement.style.color = '#FFEB3B';
+        } else {
+            statusElement.textContent = 'Consumo normal';
+            statusElement.style.color = '#4CAF50';
+        }
+    }
+    
+    function avaliarQualidadePM1(valor) {
+        const qualityElement = document.getElementById('pm1_quality');
+        const statusElement = document.getElementById('pm1_status');
+        
+        if (valor <= 10) {
+            qualityElement.textContent = 'BOM';
+            qualityElement.style.backgroundColor = '#4CAF50';
+            statusElement.textContent = 'Nível seguro de partículas ultrafinas';
+        } else if (valor <= 25) {
+            qualityElement.textContent = 'MODERADO';
+            qualityElement.style.backgroundColor = '#FFEB3B';
+            statusElement.textContent = 'Nível aceitável de partículas ultrafinas';
+        } else if (valor <= 50) {
+            qualityElement.textContent = 'RUIM';
+            qualityElement.style.backgroundColor = '#FF9800';
+            statusElement.textContent = 'Nível elevado de partículas ultrafinas';
+        } else if (valor <= 75) {
+            qualityElement.textContent = 'MUITO RUIM';
+            qualityElement.style.backgroundColor = '#F44336';
+            statusElement.textContent = 'Nível perigoso de partículas ultrafinas';
+        } else {
+            qualityElement.textContent = 'PÉSSIMO';
+            qualityElement.style.backgroundColor = '#9C27B0';
+            statusElement.textContent = 'Nível extremamente perigoso';
+        }
+    }
+    
+    function avaliarQualidadePM25(valor) {
+        const qualityElement = document.getElementById('pm25_quality');
+        const statusElement = document.getElementById('pm25_status');
+        
+        if (valor <= 12) {
+            qualityElement.textContent = 'BOM';
+            qualityElement.style.backgroundColor = '#4CAF50';
+            statusElement.textContent = 'Qualidade do ar boa';
+        } else if (valor <= 35.4) {
+            qualityElement.textContent = 'MODERADO';
+            qualityElement.style.backgroundColor = '#FFEB3B';
+            statusElement.textContent = 'Qualidade do ar aceitável';
+        } else if (valor <= 55.4) {
+            qualityElement.textContent = 'RUIM';
+            qualityElement.style.backgroundColor = '#FF9800';
+            statusElement.textContent = 'Insalubre para grupos sensíveis';
+        } else if (valor <= 150.4) {
+            qualityElement.textContent = 'MUITO RUIM';
+            qualityElement.style.backgroundColor = '#F44336';
+            statusElement.textContent = 'Insalubre para todos';
+        } else {
+            qualityElement.textContent = 'PÉSSIMO';
+            qualityElement.style.backgroundColor = '#9C27B0';
+            statusElement.textContent = 'Perigoso para a saúde';
+        }
+    }
+    
+    function avaliarQualidadePM10(valor) {
+        const qualityElement = document.getElementById('pm10_quality');
+        const statusElement = document.getElementById('pm10_status');
+        
+        if (valor <= 54) {
+            qualityElement.textContent = 'BOM';
+            qualityElement.style.backgroundColor = '#4CAF50';
+            statusElement.textContent = 'Qualidade do ar boa';
+        } else if (valor <= 154) {
+            qualityElement.textContent = 'MODERADO';
+            qualityElement.style.backgroundColor = '#FFEB3B';
+            statusElement.textContent = 'Qualidade do ar aceitável';
+        } else if (valor <= 254) {
+            qualityElement.textContent = 'RUIM';
+            qualityElement.style.backgroundColor = '#FF9800';
+            statusElement.textContent = 'Insalubre para grupos sensíveis';
+        } else if (valor <= 354) {
+            qualityElement.textContent = 'MUITO RUIM';
+            qualityElement.style.backgroundColor = '#F44336';
+            statusElement.textContent = 'Insalubre para todos';
+        } else {
+            qualityElement.textContent = 'PÉSSIMO';
+            qualityElement.style.backgroundColor = '#9C27B0';
+            statusElement.textContent = 'Perigoso para a saúde';
+        }
+    }
+    
+    function conectarWebSocket() {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            console.log('WebSocket já está conectado.');
+            return;
+        }
+        
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/dashboard/`;
+        
+        try {
+            console.log(`Tentando conectar ao WebSocket em ${wsUrl}`);
+            ws = new WebSocket(wsUrl);
             
-            document.getElementById('temperatura').textContent = data.temperatura;
-            document.getElementById('umidade').textContent = data.umidade;
-            document.getElementById('luminosidade').textContent = data.luminosidade;
-            document.getElementById('qualidade_ar').textContent = data.qualidade_ar;
-            document.getElementById('chuva').textContent = data.chuva;
-            document.getElementById('data_hora').textContent = formatarDataHora(data.data_hora);
+            ws.onopen = function() {
+                console.log('Conexão WebSocket estabelecida com sucesso!');
+            };
+            
+            ws.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('Dados recebidos:', data);
+                    
+                    document.getElementById('temperatura').textContent = data.temperatura;
+                    document.getElementById('umidade').textContent = data.umidade;
+                    document.getElementById('luminosidade').textContent = data.luminosidade;
+                    document.getElementById('data_hora').textContent = formatarDataHora(data.data_hora);
 
-            atualizarGrafico(tempChart, data.temperatura, tempData);
-            atualizarGrafico(umidChart, data.umidade, umidData);
-            atualizarGrafico(luxChart, data.luminosidade, luxData);
-            atualizarGrafico(arChart, data.qualidade_ar, arData);
-            atualizarGrafico(chuvaChart, data.chuva, chuvaData);
-        };
+                    if (data.chuva !== undefined) {
+                        atualizarIndicadorChuva(data.chuva);
+                    }
+                    
+                    if (data.corrente !== undefined) {
+                        document.getElementById('corrente').textContent = data.corrente;
+                        atualizarGrafico(correnteChart, data.corrente, correnteData);
+                        avaliarCorrente(data.corrente);
+                    }
+                    
+                    if (data.gas_detectado !== undefined) {
+                        atualizarIndicadorGas(data.gas_detectado);
+                    }
+                    
+                    if (data.pm1_0 !== undefined) {
+                        document.getElementById('pm1_0').textContent = data.pm1_0;
+                        atualizarGrafico(pm1Chart, data.pm1_0, pm1Data);
+                        avaliarQualidadePM1(data.pm1_0);
+                    }
+                    
+                    if (data.pm2_5 !== undefined) {
+                        document.getElementById('pm2_5').textContent = data.pm2_5;
+                        atualizarGrafico(pm25Chart, data.pm2_5, pm25Data);
+                        avaliarQualidadePM25(data.pm2_5);
+                    }
+                    
+                    if (data.pm10 !== undefined) {
+                        document.getElementById('pm10').textContent = data.pm10;
+                        atualizarGrafico(pm10Chart, data.pm10, pm10Data);
+                        avaliarQualidadePM10(data.pm10);
+                    }
 
-        ws.onclose = function(e) {
-            console.log('WebSocket desconectado. Tentando reconectar em 5 segundos...');
+                    atualizarGrafico(tempChart, data.temperatura, tempData);
+                    atualizarGrafico(umidChart, data.umidade, umidData);
+                    atualizarGrafico(luxChart, data.luminosidade, luxData);
+                } catch (e) {
+                    console.error('Erro ao processar mensagem do WebSocket:', e);
+                }
+            };
+
+            ws.onclose = function(e) {
+                console.log(`WebSocket desconectado (código: ${e.code}, razão: ${e.reason}). Tentando reconectar em 5 segundos...`);
+                setTimeout(conectarWebSocket, 5000);
+            };
+
+            ws.onerror = function(err) {
+                console.error('Erro no WebSocket:', err);
+            };
+        } catch (e) {
+            console.error('Erro ao criar conexão WebSocket:', e);
             setTimeout(conectarWebSocket, 5000);
-        };
-
-        ws.onerror = function(err) {
-            console.error('Erro no WebSocket:', err);
-            ws.close();
-        };
+        }
     }
 
-    conectarWebSocket();
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Página carregada, iniciando conexão WebSocket...');
+        conectarWebSocket();
+    });
+
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible' && (!ws || ws.readyState !== WebSocket.OPEN)) {
+            console.log('Página visível novamente, tentando reconectar WebSocket...');
+            conectarWebSocket();
+        }
+    });
 </script>
 {% endblock %}

@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    command: >
+      sh -c "python manage.py makemigrations sensores --noinput &&
+             python manage.py migrate --noinput &&
+             python _superuser.py &&
+             daphne -b 0.0.0.0 -p 8000 sensores_project.asgi:application"
+    volumes:
+      - .:/app
+    env_file:
+      - .env.local
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  consumer:
+    build: .
+    env_file:
+      - .env.local
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    volumes:
+      - .:/app
+    command: >
+      sh -c "sleep 30 &&
+             python _consumer.py"
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - .env.local
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sensores_local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    ports:
+      - "5432:5432"
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.12.0-management
+    env_file:
+      - .env.local
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - ./rabbitmq/rabbitmq.sh:/rabbitmq.sh
+    entrypoint: sh -c "rabbitmq-server & sleep 10 && chmod +x /rabbitmq.sh && /rabbitmq.sh"
+    ports:
+      - "5672:5672"
+      - "1883:1883"
+      - "15672:15672"
+    networks:
+      - app_network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - app_network
+    restart: unless-stopped
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  redis_data:
