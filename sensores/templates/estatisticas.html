@@ -2,90 +2,439 @@
 
 {% block title %}Estatísticas dos Sensores{% endblock %}
 
+{% block extra_css %}
+<style>
+
+.tab-container {
+    margin: 30px 0;
+    position: relative;
+}
+
+.tab-buttons {
+    display: flex;
+    gap: 0;
+    position: relative;
+    z-index: 10;
+}
+
+.tab-button {
+    background: linear-gradient(180deg, #e3f0ff 0%, #b3d1fa 100%);
+    border: 2px solid #1976d2;
+    border-bottom: none;
+    border-radius: 16px 16px 0 0;
+    padding: 10px 28px 8px 28px;
+    font-size: 15px;
+    color: #1976d2;
+    cursor: pointer;
+    margin-right: 6px;
+    position: relative;
+    top: 7px;
+    box-shadow: 0 3px 8px rgba(25, 118, 210, 0.10);
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s, top 0.2s;
+    outline: none;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    z-index: 1;
+}
+
+.tab-button.active {
+    background: #fff;
+    color: #0d47a1;
+    font-weight: bold;
+    z-index: 2;
+    box-shadow: 0 6px 16px rgba(25, 118, 210, 0.13);
+    border-bottom: 2px solid #fff;
+    top: 0;
+}
+
+.tab-button:not(.active):hover {
+    background: linear-gradient(180deg, #d0e7ff 0%, #a0c4f7 100%);
+    color: #0d47a1;
+    box-shadow: 0 5px 12px rgba(25, 118, 210, 0.13);
+    top: 4px;
+}
+
+.tab-content {
+    display: none;
+    padding: 30px;
+    border: 1px solid #ccc;
+    border-radius: 0 6px 6px 6px;
+    background-color: #fff;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    position: relative;
+    z-index: 5;
+    margin-top: -1px;
+}
+
+.tab-content.active {
+    display: block;
+    animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <h1>Estatísticas dos Sensores</h1>
 
 <div class="filtro-container">
     <select id="periodo">
-        <option value="hoje">Hoje</option>
-        <option value="semana">Última Semana</option>
-        <option value="mes">Último Mês</option>
+        <option value="hoje" {% if periodo == 'hoje' %}selected{% endif %}>Hoje</option>
+        <option value="semana" {% if periodo == 'semana' %}selected{% endif %}>Últimos 7 dias</option>
+        <option value="mes" {% if periodo == 'mes' %}selected{% endif %}>Últimos 30 dias</option>
     </select>
     <button onclick="filtrarDados()">Filtrar</button>
 </div>
 
-<div class="card">
-    <h2>Médias - Sensores Principais</h2>
-    <table>
-        <tr>
-            <th>Métrica</th>
-            <th>Média</th>
-        </tr>
-        <tr>
-            <td>Temperatura</td>
-            <td>{{ media_temperatura }}°C</td>
-        </tr>
-        <tr>
-            <td>Umidade</td>
-            <td>{{ media_umidade }}%</td>
-        </tr>
-        <tr>
-            <td>Luminosidade</td>
-            <td>{{ media_luminosidade }} lux</td>
-        </tr>
-        <tr>
-            <td>Chuva</td>
-            <td>{{ media_chuva }} ({{ media_chuva|floatformat:0 }}% do tempo)</td>
-        </tr>
-    </table>
+<div class="tab-container">
+    <div class="tab-buttons">
+        <button id="tabelas-btn" class="tab-button active" type="button">Tabelas</button>
+        <button id="graficos-btn" class="tab-button" type="button">Gráficos</button>
+    </div>
+    <div id="tabelas" class="tab-content active">
+        <div class="stats-container">
+            <div class="card">
+                <h2>Médias - Ambiente</h2>
+                <table>
+                    <tr>
+                        <th>Métrica</th>
+                        <th>Valor</th>
+                    </tr>
+                    <tr>
+                        <td>Temperatura</td>
+                        <td>{{ media_temperatura|floatformat:1 }}°C</td>
+                    </tr>
+                    <tr>
+                        <td>Umidade</td>
+                        <td>{{ media_umidade|floatformat:1 }}%</td>
+                    </tr>
+                    <tr>
+                        <td>Luminosidade</td>
+                        <td>{{ media_luminosidade|floatformat:1 }} lux</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="card">
+                <h2>Médias - Sensores de Segurança</h2>
+                <table>
+                    <tr>
+                        <th>Métrica</th>
+                        <th>Valor</th>
+                    </tr>
+                    <tr>
+                        <td>Gás (MQ-2)</td>
+                        <td>{{ percentual_gas|floatformat:1 }}% do tempo</td>
+                    </tr>
+                    <tr>
+                        <td>Corrente Elétrica</td>
+                        <td>{{ media_corrente|floatformat:1 }} A</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="card">
+                <h2>Médias - Qualidade do Ar</h2>
+                <table>
+                    <tr>
+                        <th>Métrica</th>
+                        <th>Valor</th>
+                    </tr>
+                    <tr>
+                        <td>Partículas PM1.0</td>
+                        <td>{{ media_pm1_0|floatformat:1 }} µg/m³</td>
+                    </tr>
+                    <tr>
+                        <td>Partículas PM2.5</td>
+                        <td>{{ media_pm2_5|floatformat:1 }} µg/m³</td>
+                    </tr>
+                    <tr>
+                        <td>Partículas PM10</td>
+                        <td>{{ media_pm10|floatformat:1 }} µg/m³</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="card">
+                <h2>Extremos - Temperatura</h2>
+                <table>
+                    <tr>
+                        <th>Métrica</th>
+                        <th>Valor</th>
+                        <th>Data/Hora</th>
+                    </tr>
+                    <tr>
+                        <td>Máxima</td>
+                        <td>{{ max_temperatura|default:"--" }}°C</td>
+                        <td>{{ max_temperatura_data|default:"--" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Mínima</td>
+                        <td>{{ min_temperatura|default:"--" }}°C</td>
+                        <td>{{ min_temperatura_data|default:"--" }}</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="card">
+                <h2>Extremos - Umidade</h2>
+                <table>
+                    <tr>
+                        <th>Métrica</th>
+                        <th>Valor</th>
+                        <th>Data/Hora</th>
+                    </tr>
+                    <tr>
+                        <td>Máxima</td>
+                        <td>{{ max_umidade|default:"--" }}%</td>
+                        <td>{{ max_umidade_data|default:"--" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Mínima</td>
+                        <td>{{ min_umidade|default:"--" }}%</td>
+                        <td>{{ min_umidade_data|default:"--" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div id="graficos" class="tab-content">
+        <div class="stats-container">
+            <div class="card">
+                <h2>Temperatura</h2>
+                <div class="chart-wrapper">
+                    <canvas id="temperatureChart"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <h2>Umidade</h2>
+                <div class="chart-wrapper">
+                    <canvas id="humidityChart"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <h2>Partículas no Ar</h2>
+                <div class="chart-wrapper">
+                    <canvas id="airParticlesChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<div class="card">
-    <h2>Médias - Sensores de Segurança</h2>
-    <table>
-        <tr>
-            <th>Métrica</th>
-            <th>Valor</th>
-        </tr>
-        <tr>
-            <td>Corrente</td>
-            <td>{{ media_corrente }} mA</td>
-        </tr>
-        <tr>
-            <td>Detecções de Gás</td>
-            <td>{{ deteccoes_gas }} ({{ percentual_gas }}% do tempo)</td>
-        </tr>
-    </table>
-</div>
-
-<div class="card">
-    <h2>Médias - Partículas no Ar</h2>
-    <table>
-        <tr>
-            <th>Métrica</th>
-            <th>Média</th>
-        </tr>
-        <tr>
-            <td>PM1.0</td>
-            <td>{{ media_pm1_0 }} µg/m³</td>
-        </tr>
-        <tr>
-            <td>PM2.5</td>
-            <td>{{ media_pm2_5 }} µg/m³</td>
-        </tr>
-        <tr>
-            <td>PM10</td>
-            <td>{{ media_pm10 }} µg/m³</td>
-        </tr>
-    </table>
-</div>
-{% endblock %}
-
-{% block extra_js %}
 <script>
+    var dadosTemperatura = {{ dados_temperatura|safe }};
+    var dadosUmidade = {{ dados_umidade|safe }};
+    var dadosParticulas = {{ dados_particulas|safe }};
+
+    let temperatureChart = null;
+    let humidityChart = null;
+    let airParticlesChart = null;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('tabelas-btn').addEventListener('click', function() {
+            showTab('tabelas');
+        });
+        document.getElementById('graficos-btn').addEventListener('click', function() {
+            showTab('graficos');
+        });
+        const savedTab = localStorage.getItem('activeTab') || 'tabelas';
+        showTab(savedTab);
+        const urlParams = new URLSearchParams(window.location.search);
+        const periodoParam = urlParams.get('periodo');
+        if (periodoParam) {
+            document.getElementById('periodo').value = periodoParam;
+        }
+    });
+
     function filtrarDados() {
         const periodo = document.getElementById('periodo').value;
-        window.location.href = `{% url 'estatisticas' %}?periodo=${periodo}`;
+        window.location.href = `/estatisticas/?periodo=${periodo}`;
+    }
+
+    function showTab(tabName) {
+        const tabContents = document.getElementsByClassName("tab-content");
+        for (let i = 0; i < tabContents.length; i++) {
+            tabContents[i].classList.remove("active");
+            tabContents[i].style.display = "none";
+        }
+        const tabButtons = document.getElementsByClassName("tab-button");
+        for (let i = 0; i < tabButtons.length; i++) {
+            tabButtons[i].classList.remove("active");
+        }
+        document.getElementById(tabName).classList.add("active");
+        document.getElementById(tabName).style.display = "block";
+        document.getElementById(tabName + "-btn").classList.add("active");
+        localStorage.setItem('activeTab', tabName);
+        if (tabName === 'graficos') {
+            setTimeout(function() {
+                initCharts();
+            }, 100);
+        }
+    }
+
+    function initCharts() {
+        try {
+            if (typeof Chart === 'undefined') {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js';
+                script.onload = function() {
+                    initCharts();
+                };
+                document.head.appendChild(script);
+                return;
+            }
+            const periodo = document.getElementById('periodo').value;
+            if (!dadosTemperatura || !dadosUmidade || !dadosParticulas) return;
+            if (!dadosTemperatura[periodo] || !dadosUmidade[periodo] || !dadosParticulas[periodo]) return;
+
+            let xAxisConfig = {
+                display: true,
+                ticks: {
+                    font: { size: 7 },
+                    maxRotation: 0,
+                    autoSkip: true
+                },
+                grid: { display: false }
+            };
+            if (periodo === 'hoje') {
+                xAxisConfig.ticks.maxTicksLimit = 8;
+            } else if (periodo === 'semana') {
+                xAxisConfig.ticks.maxTicksLimit = 7;
+            } else {
+                xAxisConfig.ticks.maxTicksLimit = 4;
+            }
+
+            const temperatureCtx = document.getElementById('temperatureChart');
+            const humidityCtx = document.getElementById('humidityChart');
+            const airParticlesCtx = document.getElementById('airParticlesChart');
+            if (!temperatureCtx || !humidityCtx || !airParticlesCtx) return;
+
+            if (temperatureChart) temperatureChart.destroy();
+            if (humidityChart) humidityChart.destroy();
+            if (airParticlesChart) airParticlesChart.destroy();
+
+            temperatureChart = new Chart(temperatureCtx, {
+                type: 'line',
+                data: {
+                    labels: dadosTemperatura[periodo].labels,
+                    datasets: [{
+                        label: 'Temperatura (°C)',
+                        data: dadosTemperatura[periodo].data,
+                        borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        tension: 0.1,
+                        fill: true,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: true, mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        y: {
+                            display: true,
+                            title: { display: true, text: '°C', font: { size: 8 } },
+                            ticks: { font: { size: 7 }, maxTicksLimit: 3 },
+                            grid: { display: false }
+                        },
+                        x: xAxisConfig
+                    }
+                }
+            });
+
+            humidityChart = new Chart(humidityCtx, {
+                type: 'line',
+                data: {
+                    labels: dadosUmidade[periodo].labels,
+                    datasets: [{
+                        label: 'Umidade (%)',
+                        data: dadosUmidade[periodo].data,
+                        borderColor: 'rgb(54, 162, 235)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        tension: 0.1,
+                        fill: true,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: true, mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        y: {
+                            display: true,
+                            title: { display: true, text: '%', font: { size: 8 } },
+                            ticks: { font: { size: 7 }, maxTicksLimit: 3 },
+                            grid: { display: false }
+                        },
+                        x: xAxisConfig
+                    }
+                }
+            });
+
+            airParticlesChart = new Chart(airParticlesCtx, {
+                type: 'line',
+                data: {
+                    labels: dadosParticulas[periodo].labels,
+                    datasets: [
+                        {
+                            label: 'PM1.0',
+                            data: dadosParticulas[periodo].data.pm1_0,
+                            borderColor: 'rgb(201, 203, 207)',
+                            backgroundColor: 'rgba(201, 203, 207, 0.2)',
+                            tension: 0.1,
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'PM2.5',
+                            data: dadosParticulas[periodo].data.pm2_5,
+                            borderColor: 'rgb(255, 99, 71)',
+                            backgroundColor: 'rgba(255, 99, 71, 0.2)',
+                            tension: 0.1,
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'PM10',
+                            data: dadosParticulas[periodo].data.pm10,
+                            borderColor: 'rgb(128, 0, 128)',
+                            backgroundColor: 'rgba(128, 0, 128, 0.2)',
+                            tension: 0.1,
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { boxWidth: 8, font: { size: 7 } }
+                        },
+                        tooltip: { enabled: true, mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        y: {
+                            display: true,
+                            title: { display: true, text: 'µg/m³', font: { size: 8 } },
+                            ticks: { font: { size: 7 }, maxTicksLimit: 3 },
+                            grid: { display: false }
+                        },
+                        x: xAxisConfig
+                    }
+                }
+            });
+        } catch (error) {
+            console.error("Erro ao inicializar gráficos:", error);
+        }
     }
 </script>
 {% endblock %}
