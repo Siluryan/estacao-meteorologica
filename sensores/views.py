@@ -32,10 +32,10 @@ def estatisticas(request):
     if periodo == 'hoje':
         dados = DadoSensor.objects.filter(data__date=hoje.date())
     elif periodo == 'semana':
-        inicio = (inicio_hoje - timedelta(days=6)).date()  # 7 dias incluindo hoje
+        inicio = (inicio_hoje - timedelta(days=6)).date()
         dados = DadoSensor.objects.filter(data__date__gte=inicio, data__date__lte=hoje.date())
     else:
-        inicio = (inicio_hoje - timedelta(days=29)).date()  # 30 dias incluindo hoje
+        inicio = (inicio_hoje - timedelta(days=29)).date()
         dados = DadoSensor.objects.filter(data__date__gte=inicio, data__date__lte=hoje.date())
     
     context = {
@@ -55,19 +55,19 @@ def estatisticas(request):
     if dados.exists():
         max_temp_registro = dados.order_by('-temperatura').first()
         context['max_temperatura'] = round(max_temp_registro.temperatura, 1)
-        context['max_temperatura_data'] = max_temp_registro.data.strftime('%d/%m/%Y %H:%M')
+        context['max_temperatura_data'] = timezone.localtime(max_temp_registro.data).strftime('%d/%m/%Y %H:%M')
         
         min_temp_registro = dados.order_by('temperatura').first()
         context['min_temperatura'] = round(min_temp_registro.temperatura, 1)
-        context['min_temperatura_data'] = min_temp_registro.data.strftime('%d/%m/%Y %H:%M')
+        context['min_temperatura_data'] = timezone.localtime(min_temp_registro.data).strftime('%d/%m/%Y %H:%M')
         
         max_umidade_registro = dados.order_by('-umidade').first()
         context['max_umidade'] = round(max_umidade_registro.umidade, 1)
-        context['max_umidade_data'] = max_umidade_registro.data.strftime('%d/%m/%Y %H:%M')
+        context['max_umidade_data'] = timezone.localtime(max_umidade_registro.data).strftime('%d/%m/%Y %H:%M')
         
         min_umidade_registro = dados.order_by('umidade').first()
         context['min_umidade'] = round(min_umidade_registro.umidade, 1)
-        context['min_umidade_data'] = min_umidade_registro.data.strftime('%d/%m/%Y %H:%M')
+        context['min_umidade_data'] = timezone.localtime(min_umidade_registro.data).strftime('%d/%m/%Y %H:%M')
     
     if context['total_registros'] > 0:
         context['percentual_gas'] = round((context['deteccoes_gas'] / context['total_registros']) * 100, 1)
@@ -93,7 +93,7 @@ def estatisticas(request):
     if periodo == 'hoje':
         dados_ordenados = dados.order_by('data')
         for dado in dados_ordenados:
-            label = dado.data.strftime('%H:%M')
+            label = timezone.localtime(dado.data).strftime('%H:%M')
             dados_temperatura['hoje']['labels'].append(label)
             dados_temperatura['hoje']['data'].append(dado.temperatura)
             dados_umidade['hoje']['labels'].append(label)
@@ -102,6 +102,7 @@ def estatisticas(request):
             dados_particulas['hoje']['data']['pm1_0'].append(dado.pm1_0)
             dados_particulas['hoje']['data']['pm2_5'].append(dado.pm2_5)
             dados_particulas['hoje']['data']['pm10'].append(dado.pm10)
+   
     else:
         agrupados = dados.annotate(dia=TruncDate('data')).values('dia').annotate(
             temp_avg=Avg('temperatura'),

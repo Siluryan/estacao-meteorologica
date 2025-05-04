@@ -38,7 +38,6 @@ def gerar_dados_sensores():
     temperatura = round(random.uniform(15.0, 35.0), 1)
     umidade = round(random.uniform(30.0, 90.0), 1)
     luminosidade = round(random.uniform(100.0, 1000.0), 1)
-    
     chuva = random.choice([True, False])
     gas_detectado = random.choice([True, False])
     corrente = round(random.uniform(500.0, 3500.0), 1)

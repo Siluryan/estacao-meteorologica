@@ -2,6 +2,7 @@ import json
 from channels.generic.websocket import WebsocketConsumer
 from asgiref.sync import async_to_sync
 import logging
+from django.utils import timezone
 
 logger = logging.getLogger('websocket_consumer')
 
@@ -15,18 +16,40 @@ class DashboardConsumer(WebsocketConsumer):
         self.accept()
         logger.info("WebSocket connection established")
         
-        self.send(text_data=json.dumps({
-            'temperatura': 25.0,
-            'umidade': 60.0,
-            'luminosidade': 800.0,
-            'gas_detectado': False,
-            'chuva': False,
-            'corrente': 1000.0,
-            'pm1_0': 10.0,
-            'pm2_5': 25.0,
-            'pm10': 50.0,
-            'data_hora': '2023-01-01T12:00:00'
-        }))
+        from .models import DadoSensor
+        
+        ultimo_dado = DadoSensor.objects.order_by('-data').first()
+        
+        if ultimo_dado:
+            self.send(text_data=json.dumps({
+                'temperatura': ultimo_dado.temperatura,
+                'umidade': ultimo_dado.umidade,
+                'luminosidade': ultimo_dado.luminosidade,
+                'gas_detectado': ultimo_dado.gas_detectado,
+                'chuva': bool(ultimo_dado.chuva),
+                'corrente': ultimo_dado.corrente,
+                'pm1_0': ultimo_dado.pm1_0,
+                'pm2_5': ultimo_dado.pm2_5,
+                'pm10': ultimo_dado.pm10,
+                'data_hora': timezone.localtime(ultimo_dado.data).isoformat()
+            }))
+            logger.info(f"Enviando dados do último registro: {ultimo_dado.data}")
+        else:
+            data_atual = timezone.now()
+            self.send(text_data=json.dumps({
+                'temperatura': 25.0,
+                'umidade': 60.0,
+                'luminosidade': 800.0,
+                'gas_detectado': False,
+                'chuva': False,
+                'corrente': 1000.0,
+                'pm1_0': 10.0,
+                'pm2_5': 25.0,
+                'pm10': 50.0,
+                'data_hora': data_atual.isoformat()
+            }))
+            logger.info("Não há registros no banco de dados. Enviando valores padrão com a data atual.")
+
 
     def disconnect(self, close_code):
         logger.info(f"WebSocket disconnected with code: {close_code}")

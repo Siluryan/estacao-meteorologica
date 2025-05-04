@@ -6,6 +6,7 @@ import time
 import logging
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from django.utils import timezone
 
 logging.basicConfig(
     level=logging.INFO,
@@ -74,7 +75,7 @@ def on_message(client, userdata, msg):
             "pm1_0": dado.pm1_0,
             "pm2_5": dado.pm2_5,
             "pm10": dado.pm10,
-            "data_hora": dado.data.isoformat()
+            "data_hora": timezone.localtime(dado.data).isoformat()
         }
         
         try:

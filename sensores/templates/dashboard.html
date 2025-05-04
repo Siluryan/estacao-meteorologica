@@ -45,7 +45,7 @@
                 <div class="card-body">
                     <div class="sensor-data">
                         <div>
-                            <h5 class="card-title">Luminosidade</h5>
+                            <h5 class="card-title">Luminosidade <span id="lux_icon"></span></h5>
                             <p class="card-text h4"><span id="luminosidade">--</span> lux</p>
                         </div>
                         <div style="width: 60px; height: 40px;">
@@ -326,6 +326,11 @@
     const pm25Data = Array(maxDataPoints).fill(0);
     const pm10Data = Array(maxDataPoints).fill(0);
 
+    let lowLuxStartTime = null;
+    let isNightMode = false;
+    const LUX_THRESHOLD = 50;
+    const NIGHT_DURATION_MS = 60 * 1000;
+
     const chartConfig = {
         type: 'bar',
         data: {
@@ -441,6 +446,33 @@
             statusText.style.color = '#4CAF50';
         }
     }
+    
+    function atualizarIconeLuminosidade(luminosidade) {
+        const iconElement = document.getElementById('lux_icon');
+        const currentTime = Date.now();
+        
+        if (luminosidade < LUX_THRESHOLD) {
+            if (lowLuxStartTime === null) {
+                lowLuxStartTime = currentTime;
+                console.log('Luz abaixo do limite. Iniciando contagem de tempo.');
+            } else if (!isNightMode && (currentTime - lowLuxStartTime) >= NIGHT_DURATION_MS) {
+                isNightMode = true;
+                iconElement.innerHTML = '<i class="fas fa-moon text-primary"></i>';
+                console.log('Modo noturno ativado após 1 minuto com luz baixa.');
+            }
+        } else {
+            if (lowLuxStartTime !== null) {
+                console.log('Luz acima do limite. Resetando contagem de tempo.');
+                lowLuxStartTime = null;
+            }
+            
+            if (isNightMode || iconElement.innerHTML === '') {
+                isNightMode = false;
+                iconElement.innerHTML = '<i class="fas fa-sun text-warning"></i>';
+                console.log('Modo diurno ativado devido ao aumento da luminosidade.');
+            }
+        }
+    }      
     
     function avaliarCorrente(corrente) {
         const statusElement = document.getElementById('corrente_status');
@@ -568,6 +600,8 @@
                     document.getElementById('luminosidade').textContent = data.luminosidade;
                     document.getElementById('data_hora').textContent = formatarDataHora(data.data_hora);
 
+                    atualizarIconeLuminosidade(data.luminosidade);
+
                     if (data.chuva !== undefined) {
                         atualizarIndicadorChuva(data.chuva);
                     }
@@ -625,6 +659,8 @@
     document.addEventListener('DOMContentLoaded', function() {
         console.log('Página carregada, iniciando conexão WebSocket...');
         conectarWebSocket();
+        
+        document.getElementById('lux_icon').innerHTML = '<i class="fas fa-sun text-warning"></i>';
     });
 
     document.addEventListener('visibilitychange', function() {
