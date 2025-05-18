@@ -98,6 +98,23 @@
     <div id="tabelas" class="tab-content active">
         <div class="stats-container">
             <div class="card">
+                <h2>Última Localização Conhecida</h2>
+                <table>
+                    <tr>
+                        <th>Métrica</th>
+                        <th>Valor</th>
+                    </tr>
+                    <tr>
+                        <td>Coordenadas</td>
+                        <td>{{ ultima_latitude|floatformat:6 }}, {{ ultima_longitude|floatformat:6 }}</td>
+                    </tr>
+                    <tr>
+                        <td>Local</td>
+                        <td>{{ ultima_localizacao|default:"Desconhecido" }}</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="card">
                 <h2>Médias - Ambiente</h2>
                 <table>
                     <tr>
