@@ -90,6 +90,13 @@ def estatisticas(request):
         'mes': {'labels': [], 'data': {'pm1_0': [], 'pm2_5': [], 'pm10': []}}
     }
 
+    ultima_localizacao = dados.exclude(localizacao__isnull=True).order_by('-data').first()
+
+    if ultima_localizacao:
+        context['ultima_latitude'] = ultima_localizacao.latitude
+        context['ultima_longitude'] = ultima_localizacao.longitude
+        context['ultima_localizacao'] = ultima_localizacao.localizacao    
+
     if periodo == 'hoje':
         dados_ordenados = dados.order_by('data')
         for dado in dados_ordenados:

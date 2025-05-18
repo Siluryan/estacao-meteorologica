@@ -23,25 +23,21 @@
 #define GPS_RX 21
 #define GPS_TX 22
 
-// Threshold de luminosidade
-const float LUX_THRESHOLD = 50.0;
-
 // Constantes para o ACS712 de 30A
 const float VCC = 3.3;
 const int ADC_RESOLUTION = 4095;
 const float ACS712_SENSIBILIDADE = 0.066; // 66mV/A
 const float OFFSET = 2.2;
-const float LIMITE_CORRENTE = 4000.0;
 
 // Configurações Wi-Fi
-const char* WIFI_SSID = "FERNANDA";
-const char* WIFI_PASSWORD = "Fernanda2024@";
+const char* WIFI_SSID = "";
+const char* WIFI_PASSWORD = "";
 
 // Configurações MQTT
 const char* MQTT_BROKER = "www.agrostation.online";
 const int MQTT_PORT = 1883;
 const char* MQTT_USERNAME = "mqtt_username";
-const char* MQTT_PASSWORD = "IaNGEstErysCAMboIdivEreRiMITHIGEogrAHOLInDEFiANtrI";
+const char* MQTT_PASSWORD = "";
 const char* MQTT_TOPIC = "estacao/meteorologica";
 
 // Instâncias
@@ -55,6 +51,18 @@ PubSubClient mqttClient(espClient);
 // Variáveis globais
 uint16_t pm1_0 = 0, pm2_5 = 0, pm10 = 0;
 unsigned long ultimoTempo = 0;
+
+// Remove acentos: mantém apenas caracteres ASCII (<128)
+String removeAcentos(const String& input) {
+  String output;
+  for (unsigned int i = 0; i < input.length(); i++) {
+    char c = input[i];
+    if ((uint8_t)c < 128) {
+      output += c;
+    }
+  }
+  return output;
+}
 
 void connectWiFi() {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -82,7 +90,8 @@ void connectMQTT() {
 
 String getLocationName(double lat, double lng) {
   HTTPClient http;
-  String url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" + String(lat, 6) + "&lon=" + String(lng, 6);
+  String url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" 
+               + String(lat, 6) + "&lon=" + String(lng, 6);
 
   http.begin(url);
   http.addHeader("User-Agent", "ESP32-GPS-Client");
@@ -98,13 +107,14 @@ String getLocationName(double lat, double lng) {
       return "";
     }
 
-    const char* city = doc["address"]["city"] | doc["address"]["town"] | doc["address"]["village"] | "";
+    const char* city = doc["address"]["city"]    | doc["address"]["town"] 
+                     | doc["address"]["village"] | "";
     const char* state = doc["address"]["state"] | "";
     const char* country = doc["address"]["country"] | "";
 
     String result = "";
-    if (city[0] != '\0') result += String(city) + ", ";
-    if (state[0] != '\0') result += String(state) + ", ";
+    if (city[0]    != '\0') result += String(city) + ", ";
+    if (state[0]   != '\0') result += String(state) + ", ";
     if (country[0] != '\0') result += String(country);
     return result;
   } else {
@@ -115,26 +125,30 @@ String getLocationName(double lat, double lng) {
   }
 }
 
-void enviarDadosMQTT(float temperatura, float humidade, float lux, bool estaChovendo, bool gasDetectado, float corrente) {
-  StaticJsonDocument<256> doc;
+void enviarDadosMQTT(float temperatura, float humidade, float lux, bool estaChovendo,
+                     bool gasDetectado, float corrente,
+                     double latitude, double longitude, const String& localizacao) {
+  StaticJsonDocument<512> doc;
 
-  doc["temperatura"] = temperatura;
-  doc["umidade"] = humidade;
-  doc["luminosidade"] = lux;
-  doc["chuva"] = estaChovendo;
-  doc["gas_detectado"] = gasDetectado;
-  doc["corrente"] = corrente;
-  doc["pm1_0"] = pm1_0;
-  doc["pm2_5"] = pm2_5;
-  doc["pm10"] = pm10;
+  doc["temperatura"]    = temperatura;
+  doc["umidade"]        = humidade;
+  doc["luminosidade"]   = lux;
+  doc["chuva"]          = estaChovendo;
+  doc["gas_detectado"]  = gasDetectado;
+  doc["corrente"]       = corrente;
+  doc["pm1_0"]          = pm1_0;
+  doc["pm2_5"]          = pm2_5;
+  doc["pm10"]           = pm10;
+  doc["latitude"]       = latitude;
+  doc["longitude"]      = longitude;
+  doc["localizacao"]    = localizacao;
 
-  char payload[256];
+  char payload[512];
   serializeJson(doc, payload);
 
   if (!mqttClient.connected()) {
     connectMQTT();
   }
-
   mqttClient.publish(MQTT_TOPIC, payload);
   Serial.println("Dados enviados via MQTT: " + String(payload));
 }
@@ -149,8 +163,8 @@ void setup() {
   pinMode(ACS712_PIN, INPUT);
   analogReadResolution(12);
 
-  pmsSerial.begin(9600, SERIAL_8N1, PMS_TX_PIN, -1); // PMS3003
-  gpsSerial.begin(9600, SERIAL_8N1, GPS_RX, GPS_TX); // GPS
+  pmsSerial.begin(9600, SERIAL_8N1, PMS_TX_PIN, -1);  // PMS3003
+  gpsSerial.begin(9600, SERIAL_8N1, GPS_RX, GPS_TX);  // GPS
 
   connectWiFi();
   mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
@@ -166,7 +180,7 @@ void loop() {
       pmsSerial.readBytes(buffer, 30);
       pm1_0 = (buffer[2] << 8) | buffer[3];
       pm2_5 = (buffer[4] << 8) | buffer[5];
-      pm10 = (buffer[6] << 8) | buffer[7];
+      pm10  = (buffer[6] << 8) | buffer[7];
     }
   }
 
@@ -178,56 +192,53 @@ void loop() {
   if (millis() - ultimoTempo >= 5000) {
     ultimoTempo = millis();
 
-    float humidade = dht.readHumidity();
+    // Leituras DHT22
+    float humidade   = dht.readHumidity();
     float temperatura = dht.readTemperature();
     if (isnan(humidade) || isnan(temperatura)) {
       Serial.println("Falha na leitura do sensor DHT22!");
       return;
     }
 
-    bool gasDetectado = digitalRead(PINO_SENSOR_GAS) == LOW;
-    int analogValue = analogRead(TEMT6000_PIN);
-    float voltage = analogValue * (3.3 / 4095.0);
-    float lux = voltage * 200.0;
+    // Gás e chuva
+    bool gasDetectado  = digitalRead(PINO_SENSOR_GAS) == LOW;
+    bool estaChovendo  = digitalRead(PINO_SENSOR_CHUVA) == LOW;
 
-    bool estaChovendo = digitalRead(PINO_SENSOR_CHUVA) == LOW;
+    // Luminosidade
+    int analogValue    = analogRead(TEMT6000_PIN);
+    float voltage      = analogValue * (3.3 / 4095.0);
+    float lux          = voltage * 200.0;
 
-    int acs712Value = analogRead(ACS712_PIN);
-    float sensorVoltage = (acs712Value * VCC) / ADC_RESOLUTION;
-    float corrente = abs((sensorVoltage - OFFSET) / ACS712_SENSIBILIDADE * 1000.0); // mA
+    // Corrente ACS712
+    int acs712Value    = analogRead(ACS712_PIN);
+    float sensorVoltage= (acs712Value * VCC) / ADC_RESOLUTION;
+    float corrente     = abs((sensorVoltage - OFFSET) / ACS712_SENSIBILIDADE * 1000.0);
 
-    enviarDadosMQTT(temperatura, humidade, lux, estaChovendo, gasDetectado, corrente);
-
-    Serial.print("HUMIDADE: "); Serial.print(humidade); Serial.print(" %\tTEMPERATURA: "); Serial.println(temperatura);
-    Serial.print("Sensor de Gás: "); Serial.println(gasDetectado ? "GÁS DETECTADO" : "Sem gás detectado");
-    Serial.print("Luz - ADC: "); Serial.print(analogValue); Serial.print(" | Lux: "); Serial.println(lux);
-    Serial.print("Sensor de Chuva: "); Serial.println(estaChovendo ? "ESTÁ CHOVENDO" : "SEM CHUVA");
-    Serial.print("Corrente: "); Serial.print(corrente, 2); Serial.println(" mA");
-    Serial.print("PMS3003 -> PM1.0: "); Serial.print(pm1_0); Serial.print(" | PM2.5: "); Serial.print(pm2_5); Serial.print(" | PM10: "); Serial.println(pm10);
-
-    // GPS + Localização
+    // GPS + localização
+    double lat = 0, lng = 0;
+    String localRaw = "";
+    String localAscii = "";
     if (gps.location.isValid()) {
-      double lat = gps.location.lat();
-      double lng = gps.location.lng();
+      lat = gps.location.lat();
+      lng = gps.location.lng();
 
-      Serial.print("Latitude: "); Serial.println(lat, 6);
-      Serial.print("Longitude: "); Serial.println(lng, 6);
-      Serial.print("Altitude: "); Serial.println(gps.altitude.meters());
-      Serial.print("Satélites: "); Serial.println(gps.satellites.value());
-      Serial.print("Precisão (HDOP): "); Serial.println(gps.hdop.hdop());
-
-      String locationName = getLocationName(lat, lng);
-      if (locationName.length() > 0) {
-        Serial.print("Localização aproximada: ");
-        Serial.println(locationName);
-      } else {
-        Serial.println("Falha ao obter localização detalhada.");
-      }
-    } else {
-      Serial.println("Localização GPS inválida.");
+      localRaw   = getLocationName(lat, lng);
+      localAscii = removeAcentos(localRaw);
     }
 
-    Serial.println("\n------------------------------\n");
+    enviarDadosMQTT(temperatura, humidade, lux, estaChovendo,
+                    gasDetectado, corrente,
+                    lat, lng, localAscii);
+
+    Serial.printf("H: %.1f%%  T: %.1f°C  LUX: %.1f  Chuva: %s  Gás: %s  Corrente: %.0fmA\n",
+                  humidade, temperatura, lux,
+                  estaChovendo ? "SIM" : "NÃO",
+                  gasDetectado ? "SIM" : "NÃO",
+                  corrente);
+    if (gps.location.isValid()) {
+      Serial.printf("GPS: %.6f, %.6f  Local: %s\n\n",
+                    lat, lng, localAscii.c_str());
+    }
   }
 
   mqttClient.loop();

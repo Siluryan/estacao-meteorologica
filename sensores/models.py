@@ -12,3 +12,6 @@ class DadoSensor(models.Model):
     pm1_0 = models.FloatField(default=0)
     pm2_5 = models.FloatField(default=0)
     pm10 = models.FloatField(default=0)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    localizacao = models.CharField(max_length=255, null=True, blank=True)

@@ -1,14 +1,145 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<style>
+    .dashboard-cards {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 8px;
+        justify-content: space-between;
+    }
+    
+    .card-container {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .card {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .card-body {
+        padding: 10px;
+    }
+    
+    .card-title {
+        font-size: 0.9rem;
+        margin-bottom: 5px;
+    }
+    
+    .card-text {
+        font-size: 1.1rem;
+        margin-bottom: 0;
+    }
+    
+    .sensor-data {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .indicator {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background-color: #ccc;
+    }
+    
+    .indicator.active {
+        background-color: #ff4d4d;
+        box-shadow: 0 0 10px #ff4d4d;
+    }
+    
+    .quality-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .quality-badge {
+        font-size: 0.65rem;
+        padding: 3px 6px;
+        border-radius: 10px;
+        background-color: #ccc;
+        color: white;
+        font-weight: bold;
+    }
+    
+    .air-quality-legend {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding: 5px;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        font-size: 0.8rem;
+    }
+    
+    .legend-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        margin-right: 4px;
+    }
+    
+    #map {
+        height: 200px;
+        width: 100%;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <h2>Dados em Tempo Real</h2>
     <p class="text-muted">
         <i class="fas fa-clock"></i> 
         Última atualização: <span id="data_hora" class="fw-bold">--</span>
+        <span class="ms-3">Status WebSocket: <span id="ws_status" class="badge bg-secondary">Aguardando</span></span>
     </p>
-    
+
+    <h3 class="mt-4">Localização</h3>
+    <p class="text-muted mb-2">Dados de posicionamento GPS</p>
+    <div class="dashboard-cards mt-2">
+        <div class="card-container">
+            <div class="card">
+                <div class="card-body">
+                    <div class="sensor-data">
+                        <div>
+                            <h5 class="card-title">Coordenadas</h5>
+                            <p class="card-text" id="coordenadas">--</p>
+                            <small class="text-muted" id="local">Aguardando localização...</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-container">
+            <div class="card">
+                <div class="card-body">
+                    <div id="map" style="height: 200px; width: 100%; border-radius: 4px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="dashboard-cards">
         <div class="card-container">
             <div class="card">
@@ -66,43 +197,6 @@
                         </div>
                         <div class="status-indicator">
                             <div id="chuva_indicator" class="indicator"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <h3 class="mt-4">Monitoramento de Segurança</h3>
-    <p class="text-muted mb-2">Sensores para detecção de riscos e monitoramento de consumo elétrico</p>
-    <div class="dashboard-cards mt-2">
-        <div class="card-container">
-            <div class="card">
-                <div class="card-body">
-                    <div class="sensor-data">
-                        <div>
-                            <h5 class="card-title">Detecção de Gás</h5>
-                            <p class="card-text h4"><span id="gas_detectado">--</span></p>
-                            <small class="text-muted">Alerta de vazamento de gás</small>
-                        </div>
-                        <div class="status-indicator">
-                            <div id="gas_indicator" class="indicator"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="card-container">
-            <div class="card">
-                <div class="card-body">
-                    <div class="sensor-data">
-                        <div>
-                            <h5 class="card-title">Consumo Elétrico</h5>
-                            <p class="card-text h4"><span id="corrente">--</span> mA</p>
-                            <small class="text-muted" id="corrente_status">Aguardando leitura...</small>
-                        </div>
-                        <div style="width: 60px; height: 40px;">
-                            <canvas id="correnteChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -181,294 +275,238 @@
             <span class="legend-item"><span class="legend-color" style="background-color: #9C27B0;"></span> Péssimo</span>
         </div>
     </div>
+
+    <h3 class="mt-4">Monitoramento de Segurança</h3>
+    <p class="text-muted mb-2">Sensores para detecção de riscos e monitoramento de consumo elétrico</p>
+    <div class="dashboard-cards mt-2">
+        <div class="card-container">
+            <div class="card">
+                <div class="card-body">
+                    <div class="sensor-data">
+                        <div>
+                            <h5 class="card-title">Detecção de Gás</h5>
+                            <p class="card-text h4"><span id="gas_detectado">--</span></p>
+                            <small class="text-muted">Alerta de vazamento de gás</small>
+                        </div>
+                        <div class="status-indicator">
+                            <div id="gas_indicator" class="indicator"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-container">
+            <div class="card">
+                <div class="card-body">
+                    <div class="sensor-data">
+                        <div>
+                            <h5 class="card-title">Consumo Elétrico</h5>
+                            <p class="card-text h4"><span id="corrente">--</span> mA</p>
+                            <small class="text-muted" id="corrente_status">Aguardando leitura...</small>
+                        </div>
+                        <div style="width: 60px; height: 40px;">
+                            <canvas id="correnteChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<style>
-    .dashboard-cards {
-        display: flex;
-        flex-wrap: nowrap;
-        gap: 8px;
-        justify-content: space-between;
-    }
-    
-    .card-container {
-        flex: 1;
-        min-width: 0;
-    }
-    
-    .card {
-        height: 100%;
-        margin: 0;
-        padding: 0;
-    }
-    
-    .card-body {
-        padding: 10px;
-    }
-    
-    .card-title {
-        font-size: 0.9rem;
-        margin-bottom: 5px;
-    }
-    
-    .card-text {
-        font-size: 1.1rem;
-        margin-bottom: 0;
-    }
-    
-    .sensor-data {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    
-    .status-indicator {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .indicator {
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        background-color: #ccc;
-    }
-    
-    .indicator.active {
-        background-color: #ff4d4d;
-        box-shadow: 0 0 10px #ff4d4d;
-        animation: pulse 1.5s infinite;
-    }
-    
-    .quality-indicator {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .quality-badge {
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 0.8rem;
-        font-weight: bold;
-        color: white;
-        background-color: #ccc;
-    }
-    
-    .air-quality-legend {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        justify-content: center;
-    }
-    
-    .legend-item {
-        display: flex;
-        align-items: center;
-        font-size: 0.8rem;
-    }
-    
-    .legend-color {
-        display: inline-block;
-        width: 12px;
-        height: 12px;
-        border-radius: 2px;
-        margin-right: 4px;
-    }
-    
-    @keyframes pulse {
-        0% { opacity: 1; }
-        50% { opacity: 0.5; }
-        100% { opacity: 1; }
-    }
-    
-    @media (max-width: 768px) {
-        .dashboard-cards {
-            flex-wrap: wrap;
-        }
-        
-        .card-container {
-            flex: 0 0 48%;
-            margin-bottom: 8px;
-        }
-        
-        .card-title {
-            font-size: 0.8rem;
-        }
-        
-        .card-text {
-            font-size: 1rem;
-        }
-        
-        .card-body {
-            padding: 8px;
-        }
-        
-        .air-quality-legend {
-            font-size: 0.7rem;
-        }
-    }
-</style>
-
-<!-- Adicione o Chart.js antes do seu script -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
 <script>
-    let ws = null;
-    const maxDataPoints = 10;
+    let ws;
+    let map;
+    let marker;
     
-    const tempData = Array(maxDataPoints).fill(0);
-    const umidData = Array(maxDataPoints).fill(0);
-    const luxData = Array(maxDataPoints).fill(0);
-    const correnteData = Array(maxDataPoints).fill(0);
-    const pm1Data = Array(maxDataPoints).fill(0);
-    const pm25Data = Array(maxDataPoints).fill(0);
-    const pm10Data = Array(maxDataPoints).fill(0);
-
-    let lowLuxStartTime = null;
-    let isNightMode = false;
-    const LUX_THRESHOLD = 50;
-    const NIGHT_DURATION_MS = 60 * 1000;
-
-    const chartConfig = {
-        type: 'bar',
-        data: {
-            labels: Array(maxDataPoints).fill(''),
-            datasets: [{
-                data: [],
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 1,
-            }]
+    const tempData = [25, 25, 25, 25, 25];
+    const umidData = [50, 50, 50, 50, 50];
+    const luxData = [500, 500, 500, 500, 500];
+    const correnteData = [0, 0, 0, 0, 0];
+    const pm1Data = [0, 0, 0, 0, 0];
+    const pm25Data = [0, 0, 0, 0, 0];
+    const pm10Data = [0, 0, 0, 0, 0];
+    
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        elements: { point: { radius: 0 }, line: { tension: 0.3 } },
+        scales: {
+            x: { display: false },
+            y: { display: false, beginAtZero: false }
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: { legend: { display: false } },
-            scales: {
-                x: { display: false },
-                y: { display: false }
-            },
-            animation: false
-        }
+        animation: false
     };
-
-    function createChartIfElementExists(elementId, config) {
-        const canvas = document.getElementById(elementId);
-        if (canvas) {
-            try {
-                return new Chart(canvas.getContext('2d'), config);
-            } catch (e) {
-                console.error(`Erro ao criar gráfico para ${elementId}:`, e);
-                return null;
-            }
+    
+    let tempChart, umidChart, luxChart, correnteChart, pm1Chart, pm25Chart, pm10Chart;
+    
+    function initCharts() {
+        try {
+            tempChart = new Chart(document.getElementById('tempChart'), {
+                type: 'line',
+                data: {
+                    labels: ['', '', '', '', ''],
+                    datasets: [{
+                        data: tempData,
+                        borderColor: '#FF5722',
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                },
+                options: chartOptions
+            });
+            
+            umidChart = new Chart(document.getElementById('umidChart'), {
+                type: 'line',
+                data: {
+                    labels: ['', '', '', '', ''],
+                    datasets: [{
+                        data: umidData,
+                        borderColor: '#2196F3',
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                },
+                options: chartOptions
+            });
+            
+            luxChart = new Chart(document.getElementById('luxChart'), {
+                type: 'line',
+                data: {
+                    labels: ['', '', '', '', ''],
+                    datasets: [{
+                        data: luxData,
+                        borderColor: '#FFC107',
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                },
+                options: chartOptions
+            });
+            
+            correnteChart = new Chart(document.getElementById('correnteChart'), {
+                type: 'line',
+                data: {
+                    labels: ['', '', '', '', ''],
+                    datasets: [{
+                        data: correnteData,
+                        borderColor: '#9C27B0',
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                },
+                options: chartOptions
+            });
+            
+            pm1Chart = new Chart(document.getElementById('pm1Chart'), {
+                type: 'line',
+                data: {
+                    labels: ['', '', '', '', ''],
+                    datasets: [{
+                        data: pm1Data,
+                        borderColor: '#607D8B',
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                },
+                options: chartOptions
+            });
+            
+            pm25Chart = new Chart(document.getElementById('pm25Chart'), {
+                type: 'line',
+                data: {
+                    labels: ['', '', '', '', ''],
+                    datasets: [{
+                        data: pm25Data,
+                        borderColor: '#607D8B',
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                },
+                options: chartOptions
+            });
+            
+            pm10Chart = new Chart(document.getElementById('pm10Chart'), {
+                type: 'line',
+                data: {
+                    labels: ['', '', '', '', ''],
+                    datasets: [{
+                        data: pm10Data,
+                        borderColor: '#607D8B',
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                },
+                options: chartOptions
+            });
+        } catch (error) {
+            console.error('Erro ao inicializar gráficos:', error);
         }
-        console.warn(`Elemento ${elementId} não encontrado`);
-        return null;
     }
-
-    const tempChart = createChartIfElementExists('tempChart',
-        {...chartConfig, data: {...chartConfig.data, datasets: [{...chartConfig.data.datasets[0], backgroundColor: 'rgba(255, 99, 132, 0.2)', borderColor: 'rgba(255, 99, 132, 1)'}]}}
-    );
-
-    const umidChart = createChartIfElementExists('umidChart',
-        {...chartConfig, data: {...chartConfig.data, datasets: [{...chartConfig.data.datasets[0], backgroundColor: 'rgba(54, 162, 235, 0.2)', borderColor: 'rgba(54, 162, 235, 1)'}]}}
-    );
-
-    const luxChart = createChartIfElementExists('luxChart',
-        {...chartConfig, data: {...chartConfig.data, datasets: [{...chartConfig.data.datasets[0], backgroundColor: 'rgba(255, 206, 86, 0.2)', borderColor: 'rgba(255, 206, 86, 1)'}]}}
-    );
     
-    const correnteChart = createChartIfElementExists('correnteChart',
-        {...chartConfig, data: {...chartConfig.data, datasets: [{...chartConfig.data.datasets[0], backgroundColor: 'rgba(255, 159, 64, 0.2)', borderColor: 'rgba(255, 159, 64, 1)'}]}}
-    );
-    
-    const pm1Chart = createChartIfElementExists('pm1Chart',
-        {...chartConfig, data: {...chartConfig.data, datasets: [{...chartConfig.data.datasets[0], backgroundColor: 'rgba(201, 203, 207, 0.2)', borderColor: 'rgba(201, 203, 207, 1)'}]}}
-    );
-    
-    const pm25Chart = createChartIfElementExists('pm25Chart',
-        {...chartConfig, data: {...chartConfig.data, datasets: [{...chartConfig.data.datasets[0], backgroundColor: 'rgba(255, 99, 71, 0.2)', borderColor: 'rgba(255, 99, 71, 1)'}]}}
-    );
-    
-    const pm10Chart = createChartIfElementExists('pm10Chart',
-        {...chartConfig, data: {...chartConfig.data, datasets: [{...chartConfig.data.datasets[0], backgroundColor: 'rgba(128, 0, 128, 0.2)', borderColor: 'rgba(128, 0, 128, 1)'}]}}
-    );
-
     function atualizarGrafico(chart, novoValor, dataArray) {
-        if (!chart) return;
-        
-        dataArray.shift();
         dataArray.push(novoValor);
-        chart.data.datasets[0].data = dataArray;
-        chart.update('none');
+        dataArray.shift();
+        chart.update();
     }
-
-    function formatarDataHora(dataString) {
-        const data = new Date(dataString);
-        return data.toLocaleString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
+    
+    function formatarDataHora(dataHora) {
+        try {
+            const data = new Date(dataHora);
+            return data.toLocaleString('pt-BR');
+        } catch (e) {
+            console.error('Erro ao formatar data:', e);
+            return dataHora;
+        }
+    }
+    
+    function atualizarIndicadorChuva(chuva) {
+        const indicator = document.getElementById('chuva_indicator');
+        const texto = document.getElementById('chuva');
+        
+        if (chuva) {
+            indicator.classList.add('active');
+            indicator.style.backgroundColor = '#2196F3';
+            indicator.style.boxShadow = '0 0 10px #2196F3';
+            texto.textContent = 'Detectada';
+        } else {
+            indicator.classList.remove('active');
+            indicator.style.backgroundColor = '#ccc';
+            indicator.style.boxShadow = 'none';
+            texto.textContent = 'Não detectada';
+        }
     }
     
     function atualizarIndicadorGas(detectado) {
         const indicator = document.getElementById('gas_indicator');
-        const statusText = document.getElementById('gas_detectado');
+        const texto = document.getElementById('gas_detectado');
         
         if (detectado) {
             indicator.classList.add('active');
-            statusText.textContent = 'DETECTADO';
-            statusText.style.color = '#ff4d4d';
+            indicator.style.backgroundColor = '#ff4d4d';
+            indicator.style.boxShadow = '0 0 10px #ff4d4d';
+            texto.textContent = 'ALERTA';
         } else {
             indicator.classList.remove('active');
-            statusText.textContent = 'Normal';
-            statusText.style.color = '#4CAF50';
-        }
-    }
-    
-    function atualizarIndicadorChuva(chovendo) {
-        const indicator = document.getElementById('chuva_indicator');
-        const statusText = document.getElementById('chuva');
-        
-        if (chovendo) {
-            indicator.classList.add('active');
-            statusText.textContent = 'DETECTADA';
-            statusText.style.color = '#4287f5';
-        } else {
-            indicator.classList.remove('active');
-            statusText.textContent = 'Não detectada';
-            statusText.style.color = '#4CAF50';
+            indicator.style.backgroundColor = '#4CAF50';
+            indicator.style.boxShadow = 'none';
+            texto.textContent = 'Normal';
         }
     }
     
     function atualizarIconeLuminosidade(luminosidade) {
-        const iconElement = document.getElementById('lux_icon');
-        const currentTime = Date.now();
+        const iconeElement = document.getElementById('lux_icon');
         
-        if (luminosidade < LUX_THRESHOLD) {
-            if (lowLuxStartTime === null) {
-                lowLuxStartTime = currentTime;
-                console.log('Luz abaixo do limite. Iniciando contagem de tempo.');
-            } else if (!isNightMode && (currentTime - lowLuxStartTime) >= NIGHT_DURATION_MS) {
-                isNightMode = true;
-                iconElement.innerHTML = '<i class="fas fa-moon text-primary"></i>';
-                console.log('Modo noturno ativado após 1 minuto com luz baixa.');
-            }
-        } else {
-            if (lowLuxStartTime !== null) {
-                console.log('Luz acima do limite. Resetando contagem de tempo.');
-                lowLuxStartTime = null;
-            }
-            
-            if (isNightMode || iconElement.innerHTML === '') {
-                isNightMode = false;
-                iconElement.innerHTML = '<i class="fas fa-sun text-warning"></i>';
+        if (luminosidade > 0) {
+            if (luminosidade < 200) {
+                iconeElement.innerHTML = '<i class="fas fa-moon text-primary"></i>';
+            } else if (luminosidade < 800) {
+                iconeElement.innerHTML = '<i class="fas fa-cloud-sun text-warning"></i>';
+            } else {
+                iconeElement.innerHTML = '<i class="fas fa-sun text-warning"></i>';
                 console.log('Modo diurno ativado devido ao aumento da luminosidade.');
             }
         }
@@ -573,9 +611,54 @@
         }
     }
     
+    function atualizarMapa(lat, lon, local) {
+        console.log(`Atualizando mapa com coordenadas: ${lat}, ${lon}`);
+        
+        document.getElementById('coordenadas').textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+        document.getElementById('local').textContent = local || 'Local desconhecido';
+        
+        if (!map) {
+            console.error('Mapa não inicializado');
+            return;
+        }
+        
+        map.setView([lat, lon], 13);
+        
+        if (marker) {
+            marker.setLatLng([lat, lon]);
+        } else {
+            marker = L.marker([lat, lon]).addTo(map);
+        }
+    }
+    
+    function atualizarStatusWebSocket(status) {
+        const statusIndicator = document.getElementById('ws_status');
+        if (!statusIndicator) return;
+        
+        if (status === 'connected') {
+            statusIndicator.className = 'badge bg-success';
+            statusIndicator.textContent = 'Conectado';
+        } else {
+            statusIndicator.className = 'badge bg-danger';
+            statusIndicator.textContent = 'Desconectado';
+        }
+    }
+    
+    function testarWebSocket() {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            console.log("WebSocket está conectado. Tudo bem!");
+            alert("WebSocket conectado com sucesso!");
+        } else {
+            console.error("WebSocket não está conectado!");
+            alert("WebSocket não está conectado! Verificando status: " + (ws ? ws.readyState : "undefined"));
+            conectarWebSocket();
+        }
+    }
+    
     function conectarWebSocket() {
         if (ws && ws.readyState === WebSocket.OPEN) {
             console.log('WebSocket já está conectado.');
+            atualizarStatusWebSocket('connected');
             return;
         }
         
@@ -588,6 +671,7 @@
             
             ws.onopen = function() {
                 console.log('Conexão WebSocket estabelecida com sucesso!');
+                atualizarStatusWebSocket('connected');
             };
             
             ws.onmessage = function(event) {
@@ -601,6 +685,11 @@
                     document.getElementById('data_hora').textContent = formatarDataHora(data.data_hora);
 
                     atualizarIconeLuminosidade(data.luminosidade);
+
+                    if (data.latitude && data.longitude) {
+                        console.log(`Dados de localização recebidos: ${data.latitude}, ${data.longitude}, ${data.localizacao}`);
+                        atualizarMapa(data.latitude, data.longitude, data.localizacao);
+                    }
 
                     if (data.chuva !== undefined) {
                         atualizarIndicadorChuva(data.chuva);
@@ -644,23 +733,50 @@
 
             ws.onclose = function(e) {
                 console.log(`WebSocket desconectado (código: ${e.code}, razão: ${e.reason}). Tentando reconectar em 5 segundos...`);
+                atualizarStatusWebSocket('disconnected');
                 setTimeout(conectarWebSocket, 5000);
             };
 
             ws.onerror = function(err) {
                 console.error('Erro no WebSocket:', err);
+                atualizarStatusWebSocket('disconnected');
             };
         } catch (e) {
             console.error('Erro ao criar conexão WebSocket:', e);
+            atualizarStatusWebSocket('disconnected');
             setTimeout(conectarWebSocket, 5000);
         }
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('Página carregada, iniciando conexão WebSocket...');
+        console.log('Página carregada, iniciando configuração...');
+        
+        initCharts();
+        
+        try {
+            map = L.map('map').setView([-23.550520, -46.633308], 13);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            console.log('Mapa inicializado com sucesso');
+        } catch (e) {
+            console.error('Erro ao inicializar o mapa:', e);
+        }
+        
+        console.log('Iniciando conexão WebSocket...');
         conectarWebSocket();
         
         document.getElementById('lux_icon').innerHTML = '<i class="fas fa-sun text-warning"></i>';
+        
+        const container = document.querySelector('.container');
+        const button = document.createElement('button');
+        button.textContent = 'Testar WebSocket';
+        button.className = 'btn btn-sm btn-primary mt-2';
+        button.onclick = testarWebSocket;
+        button.style.display = 'none';
+        container.appendChild(button);
     });
 
     document.addEventListener('visibilitychange', function() {

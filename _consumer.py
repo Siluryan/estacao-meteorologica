@@ -22,7 +22,7 @@ from sensores.models import DadoSensor
 
 MQTT_BROKER = os.environ.get("MQTT_BROKER", "rabbitmq")
 MQTT_PORT = int(os.environ.get("MQTT_PORT", "1883"))
-MQTT_TOPIC = os.environ.get("MQTT_TOPIC", "estacao.meteorologica")
+MQTT_TOPIC = os.environ.get("MQTT_TOPIC", "estacao/meteorologica")
 MQTT_USERNAME = os.environ.get("MQTT_USERNAME")
 MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD")
 
@@ -61,6 +61,12 @@ def on_message(client, userdata, msg):
             dado.pm2_5 = payload["pm2_5"]
         if "pm10" in payload:
             dado.pm10 = payload["pm10"]
+        if "latitude" in payload:
+            dado.latitude = payload["latitude"]
+        if "longitude" in payload:
+            dado.longitude = payload["longitude"]
+        if "localizacao" in payload:
+            dado.localizacao = payload["localizacao"]
             
         dado.save()
         logger.info(f"Dado salvo no banco de dados com ID: {dado.id}")
@@ -75,11 +81,20 @@ def on_message(client, userdata, msg):
             "pm1_0": dado.pm1_0,
             "pm2_5": dado.pm2_5,
             "pm10": dado.pm10,
-            "data_hora": timezone.localtime(dado.data).isoformat()
+            "data_hora": timezone.localtime(dado.data).isoformat(),
+            "latitude": dado.latitude,
+            "longitude": dado.longitude,
+            "localizacao": dado.localizacao
         }
         
         try:
+            logger.info("Obtendo channel_layer para enviar dados WebSocket...")
             channel_layer = get_channel_layer()
+            if not channel_layer:
+                logger.error("Channel layer não encontrado!")
+                return
+                
+            logger.info(f"Enviando dados para o grupo 'dashboard': {dados_ws}")
             async_to_sync(channel_layer.group_send)(
                 "dashboard",
                 {
@@ -114,8 +129,14 @@ def connect_with_retry(client, max_retries=5, delay=5):
     return False
 
 def main():
+    logger.info("Iniciando MQTT Consumer...")
     client = mqtt.Client()
-    client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
+    if MQTT_USERNAME and MQTT_PASSWORD:
+        client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
+        logger.info(f"Autenticação MQTT configurada com usuário: {MQTT_USERNAME}")
+    else:
+        logger.info("Iniciando sem autenticação MQTT")
+        
     client.on_connect = on_connect
     client.on_message = on_message
 
