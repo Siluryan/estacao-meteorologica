@@ -1,3 +1,65 @@
+# AgroStation: Sistema de Monitoramento Ambiental
+
+## Visão Geral
+
+AgroStation é um sistema completo de monitoramento ambiental baseado em IoT, projetado para aplicações agrícolas. Fornece dados em tempo real e análises históricas para auxiliar no gerenciamento e tomada de decisões no campo.
+
+## Tecnologias Principais
+
+- **Backend**:
+  - Django (Framework Python)
+  - Channels (WebSockets)
+  - PostgreSQL (Banco de dados relacional)
+
+- **Mensageria e Comunicação**:
+  - RabbitMQ com protocolo MQTT para comunicação com sensores
+  - Redis para cache e comunicação entre serviços
+
+- **Infraestrutura**:
+  - Docker e Docker Compose para containerização
+  - Traefik como proxy reverso e balanceador de carga
+  - Let's Encrypt para certificados SSL
+
+- **Frontend**:
+  - JavaScript para interatividade
+  - Chart.js para visualização de dados em gráficos
+  - Leaflet para mapas e geolocalização
+
+## Funcionalidades Destacadas
+
+### Dashboard em Tempo Real
+- Monitoramento de temperatura, umidade e luminosidade
+- Sensores de qualidade do ar (PM1.0, PM2.5, PM10)
+- Detecção de gás e monitoramento de corrente elétrica
+- Indicação de chuva e localização geográfica
+
+### Análise de Dados
+- Estatísticas diárias, semanais e mensais
+- Visualização gráfica de tendências
+- Registro histórico completo para análises de longo prazo
+
+### Segurança e Usabilidade
+- Sistema de login para acesso protegido
+- Alertas visuais para valores críticos
+- Interface responsiva e intuitiva para desktop e dispositivos móveis
+
+### Comunicação IoT
+- WebSockets para atualizações instantâneas na interface
+- Compatibilidade com protocolos MQTT para dispositivos IoT
+- Arquitetura escalável para suportar múltiplos sensores
+
+## Arquitetura do Sistema
+
+O sistema é composto por diversos serviços containerizados:
+- **web**: Aplicação Django principal
+- **consumer**: Processador de mensagens assíncronas
+- **db**: Banco de dados PostgreSQL
+- **rabbitmq**: Broker de mensagens MQTT
+- **redis**: Armazenamento em cache e PubSub
+- **traefik**: Proxy reverso e SSL
+
+## Instalação e Execução
+
 ### Comandos necessários
 
 ```bash
@@ -53,6 +115,8 @@ RABBITMQ_DEFAULT_USER=guest
 RABBITMQ_DEFAULT_PASS=guest
 ```
 
+## Simulação de Sensores
+
 ### Execução do simulation.py
 
 ```bash
@@ -61,6 +125,8 @@ source env/bin/activate
 pip install -r requirements.txt
 python _simulation.py
 ```
+
+## Configuração para Produção
 
 ### Criar um service para permitir reinicialização do servidor
 
