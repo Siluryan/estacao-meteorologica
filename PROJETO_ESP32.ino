@@ -36,7 +36,7 @@ const char* WIFI_PASSWORD = "";
 // Configurações MQTT
 const char* MQTT_BROKER = "www.agrostation.online";
 const int MQTT_PORT = 1883;
-const char* MQTT_USERNAME = "";
+const char* MQTT_USERNAME = "mqtt_username";
 const char* MQTT_PASSWORD = "";
 const char* MQTT_TOPIC = "estacao/meteorologica";
 
@@ -125,7 +125,6 @@ String getLocationName(double lat, double lng) {
   }
 }
 
-// Função alterada para incluir latitude, longitude e string de localização ASCII
 void enviarDadosMQTT(float temperatura, float humidade, float lux, bool estaChovendo,
                      bool gasDetectado, float corrente,
                      double latitude, double longitude, const String& localizacao) {
@@ -227,12 +226,10 @@ void loop() {
       localAscii = removeAcentos(localRaw);
     }
 
-    // Envia todos os dados de uma vez
     enviarDadosMQTT(temperatura, humidade, lux, estaChovendo,
                     gasDetectado, corrente,
                     lat, lng, localAscii);
 
-    // Logs locais
     Serial.printf("H: %.1f%%  T: %.1f°C  LUX: %.1f  Chuva: %s  Gás: %s  Corrente: %.0fmA\n",
                   humidade, temperatura, lux,
                   estaChovendo ? "SIM" : "NÃO",
