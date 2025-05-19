@@ -4,52 +4,55 @@
 #include <DHT.h>
 #include <HardwareSerial.h>
 #include <TinyGPSPlus.h>
-#include <HTTPClient.h>
 
-// DHT22
 #define DHTPIN 17
 #define DHTTYPE DHT22
-DHT dht(DHTPIN, DHTTYPE);
 
-// Sensores diversos
 #define PINO_SENSOR_GAS 18
 #define PINO_SENSOR_CHUVA 15
 #define TEMT6000_PIN 34
 #define ACS712_PIN 35
 
-// PMS3003
 #define PMS_TX_PIN 16
-HardwareSerial pmsSerial(1);
 
-// GPS NEO-6M
 #define GPS_RX 21
 #define GPS_TX 22
-HardwareSerial gpsSerial(2);
-TinyGPSPlus gps;
 
-// Config Wi-Fi
-const char* WIFI_SSID = "SEU_WIFI";
-const char* WIFI_PASSWORD = "SUA_SENHA";
+#define LED_PIN 2
 
-// Config MQTT
+const float VCC = 3.3;
+const int ADC_RESOLUTION = 4095;
+const float ACS712_SENSIBILIDADE = 0.066; // 66mV/A
+const float OFFSET = 2.2;
+
+const char* WIFI_SSID = "";
+const char* WIFI_PASSWORD = "";
+
 const char* MQTT_BROKER = "www.agrostation.online";
 const int MQTT_PORT = 1883;
-const char* MQTT_USERNAME = "mqtt_username";
+const char* MQTT_USERNAME = "";
 const char* MQTT_PASSWORD = "";
 const char* MQTT_TOPIC = "estacao/meteorologica";
 
-// MQTT Client
+DHT dht(DHTPIN, DHTTYPE);
+HardwareSerial pmsSerial(1);
+HardwareSerial gpsSerial(2);
+TinyGPSPlus gps;
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 
-// PM variáveis
 uint16_t pm1_0 = 0, pm2_5 = 0, pm10 = 0;
 
-// Controle de tempo
-unsigned long ultimoTempo = 0;
-String localizacaoCache = "";
-bool localizacaoObtida = false;
+unsigned long ultimoTempoEnvio = 0;
+unsigned long ultimoTempoLocalizacao = 0;
 
+String ultimaLocalizacao = "";
+double ultimaLat = 0;
+double ultimaLng = 0;
+
+bool precisaAtualizarLocalizacao = false;
+
+// Remove acentos, mantém ASCII
 String removeAcentos(const String& input) {
   String output;
   for (unsigned int i = 0; i < input.length(); i++) {
@@ -68,76 +71,39 @@ void connectWiFi() {
     delay(500);
     Serial.print(".");
   }
-  Serial.println("\nWi-Fi conectado. IP: " + WiFi.localIP().toString());
+  Serial.println("\nConectado! IP: " + WiFi.localIP().toString());
 }
 
 void connectMQTT() {
   while (!mqttClient.connected()) {
-    Serial.print("Conectando ao MQTT...");
+    Serial.print("Conectando ao broker MQTT...");
     if (mqttClient.connect("ESP32Client", MQTT_USERNAME, MQTT_PASSWORD)) {
       Serial.println("Conectado!");
     } else {
       Serial.print("Falha. Código: ");
       Serial.print(mqttClient.state());
-      Serial.println(" Tentando em 5s...");
+      Serial.println(" Tentando novamente em 5s...");
       delay(5000);
     }
   }
 }
 
-String getLocationName(double lat, double lng) {
-  HTTPClient http;
-  String url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" 
-               + String(lat, 6) + "&lon=" + String(lng, 6);
-
-  http.begin(url);
-  http.addHeader("User-Agent", "ESP32-GPS-Client");
-
-  int httpCode = http.GET();
-  if (httpCode == 200) {
-    String payload = http.getString();
-    StaticJsonDocument<1024> doc;
-    DeserializationError error = deserializeJson(doc, payload);
-    http.end();
-    if (error) {
-      Serial.println("Erro no JSON do Nominatim.");
-      return "";
-    }
-
-    const char* city = doc["address"]["city"]    | doc["address"]["town"] 
-                     | doc["address"]["village"] | "";
-    const char* state = doc["address"]["state"] | "";
-    const char* country = doc["address"]["country"] | "";
-
-    String result = "";
-    if (city[0]) result += String(city) + ", ";
-    if (state[0]) result += String(state) + ", ";
-    if (country[0]) result += String(country);
-
-    return removeAcentos(result);
-  } else {
-    Serial.printf("Erro HTTP: %d\n", httpCode);
-    http.end();
-    return "";
-  }
-}
-
-void enviarDadosMQTT(float temp, float hum, float lux, bool chovendo,
-                     bool gas, float corrente, double lat, double lon,
-                     const String& localizacao) {
+void enviarDadosMQTT(float temperatura, float humidade, float lux, bool estaChovendo,
+                     bool gasDetectado, float corrente,
+                     double latitude, double longitude, const String& localizacao) {
   StaticJsonDocument<512> doc;
 
-  doc["temperatura"]    = temp;
-  doc["umidade"]        = hum;
+  doc["temperatura"]    = temperatura;
+  doc["umidade"]        = humidade;
   doc["luminosidade"]   = lux;
-  doc["chuva"]          = chovendo;
-  doc["gas_detectado"]  = gas;
+  doc["chuva"]          = estaChovendo;
+  doc["gas_detectado"]  = gasDetectado;
   doc["corrente"]       = corrente;
   doc["pm1_0"]          = pm1_0;
   doc["pm2_5"]          = pm2_5;
   doc["pm10"]           = pm10;
-  doc["latitude"]       = lat;
-  doc["longitude"]      = lon;
+  doc["latitude"]       = latitude;
+  doc["longitude"]      = longitude;
   doc["localizacao"]    = localizacao;
 
   char payload[512];
@@ -146,9 +112,83 @@ void enviarDadosMQTT(float temp, float hum, float lux, bool chovendo,
   if (!mqttClient.connected()) {
     connectMQTT();
   }
-
   mqttClient.publish(MQTT_TOPIC, payload);
-  Serial.println("Publicado MQTT: " + String(payload));
+  Serial.println("Dados enviados via MQTT: " + String(payload));
+}
+
+// Nova task para atualizar localização sem travar usando WiFiClient
+void taskAtualizaLocalizacao(void * parameter) {
+  for (;;) {
+    if (precisaAtualizarLocalizacao) {
+      precisaAtualizarLocalizacao = false;
+
+      double lat = ultimaLat;
+      double lng = ultimaLng;
+
+      if (lat != 0 && lng != 0) {
+        Serial.println("🔄 Atualizando localização via HTTP não bloqueante...");
+
+        WiFiClient client;
+        const char* host = "nominatim.openstreetmap.org";
+        String url = "/reverse?format=jsonv2&lat=" + String(lat, 6) + "&lon=" + String(lng, 6);
+
+        if (!client.connect(host, 80)) {
+          Serial.println("❌ Falha ao conectar ao host");
+          vTaskDelay(pdMS_TO_TICKS(1000));
+          continue;
+        }
+
+        client.print(String("GET ") + url + " HTTP/1.1\r\n" +
+                     "Host: " + host + "\r\n" +
+                     "User-Agent: ESP32-GPS-Client\r\n" +
+                     "Connection: close\r\n\r\n");
+
+        unsigned long timeout = millis() + 3000;
+        while (client.available() == 0) {
+          if (millis() > timeout) {
+            Serial.println("❌ Timeout esperando resposta");
+            client.stop();
+            break;
+          }
+          vTaskDelay(pdMS_TO_TICKS(10));
+        }
+
+        String response = "";
+        while (client.available()) {
+          response += (char)client.read();
+        }
+        client.stop();
+
+        if (response.length() > 0) {
+          int jsonStart = response.indexOf("\r\n\r\n");
+          if (jsonStart >= 0) {
+            String jsonStr = response.substring(jsonStart + 4);
+
+            StaticJsonDocument<1024> doc;
+            auto error = deserializeJson(doc, jsonStr);
+            if (!error) {
+              const char* city = doc["address"]["city"] | doc["address"]["town"] | doc["address"]["village"] | "";
+              const char* state = doc["address"]["state"] | "";
+              const char* country = doc["address"]["country"] | "";
+
+              String result = "";
+              if (city[0] != '\0') result += String(city) + ", ";
+              if (state[0] != '\0') result += String(state) + ", ";
+              if (country[0] != '\0') result += String(country);
+
+              ultimaLocalizacao = removeAcentos(result);
+              Serial.println("🌍 Localização atualizada: " + ultimaLocalizacao);
+            } else {
+              Serial.println("❌ Erro ao decodificar JSON na task (WiFiClient).");
+            }
+          } else {
+            Serial.println("❌ Não encontrou corpo JSON na resposta.");
+          }
+        }
+      }
+    }
+    vTaskDelay(pdMS_TO_TICKS(1000));
+  }
 }
 
 void setup() {
@@ -160,6 +200,8 @@ void setup() {
   pinMode(TEMT6000_PIN, INPUT);
   pinMode(ACS712_PIN, INPUT);
   analogReadResolution(12);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, HIGH);
 
   pmsSerial.begin(9600, SERIAL_8N1, PMS_TX_PIN, -1);
   gpsSerial.begin(9600, SERIAL_8N1, GPS_RX, GPS_TX);
@@ -167,11 +209,20 @@ void setup() {
   connectWiFi();
   mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
 
-  Serial.println("Sistema pronto.");
+  Serial.println("Sistema Iniciado...");
+
+  // Cria a task de localização com 2k de stack e prioridade 1 no core 1
+  xTaskCreatePinnedToCore(
+    taskAtualizaLocalizacao,
+    "TaskLocalizacao",
+    4096,
+    NULL,
+    1,
+    NULL,
+    1);
 }
 
 void loop() {
-  // PMS3003
   if (pmsSerial.available() >= 32) {
     if (pmsSerial.read() == 0x42 && pmsSerial.read() == 0x4D) {
       uint8_t buffer[30];
@@ -182,42 +233,62 @@ void loop() {
     }
   }
 
-  // GPS
   while (gpsSerial.available()) {
     gps.encode(gpsSerial.read());
   }
 
-  if (millis() - ultimoTempo >= 5000 && gps.location.isValid()) {
-    ultimoTempo = millis();
+  unsigned long agora = millis();
 
+  if (gps.location.isValid() && (agora - ultimoTempoLocalizacao > 60000)) {
+    double latAtual = gps.location.lat();
+    double lngAtual = gps.location.lng();
+
+    if (abs(latAtual - ultimaLat) > 0.0001 || abs(lngAtual - ultimaLng) > 0.0001 || ultimaLocalizacao == "") {
+      ultimaLat = latAtual;
+      ultimaLng = lngAtual;
+
+      precisaAtualizarLocalizacao = true;  // sinaliza para a task buscar localização
+
+      ultimoTempoLocalizacao = agora;
+    }
+  }
+
+  if (agora - ultimoTempoEnvio >= 2000) {
+    ultimoTempoEnvio = agora;
+
+    float humidade   = dht.readHumidity();
     float temperatura = dht.readTemperature();
-    float umidade = dht.readHumidity();
-    if (isnan(temperatura) || isnan(umidade)) {
-      Serial.println("Falha na leitura do DHT22");
+    if (isnan(humidade) || isnan(temperatura)) {
+      Serial.println("Falha na leitura do sensor DHT22!");
       return;
     }
 
-    int analogValue = analogRead(TEMT6000_PIN);
-    float lux = analogValue * (3.3 / 4095.0) * 1000;
+    bool gasDetectado  = digitalRead(PINO_SENSOR_GAS) == LOW;
+    bool estaChovendo  = digitalRead(PINO_SENSOR_CHUVA) == LOW;
 
-    bool gas = digitalRead(PINO_SENSOR_GAS) == LOW;
-    bool chuva = digitalRead(PINO_SENSOR_CHUVA) == LOW;
+    int analogValue    = analogRead(TEMT6000_PIN);
+    float voltage      = analogValue * (3.3 / 4095.0);
+    float lux          = voltage * 200.0;
 
-    int adcValue = analogRead(ACS712_PIN);
-    float voltage = adcValue * (VCC / ADC_RESOLUTION);
-    float corrente = (voltage - OFFSET) / ACS712_SENSIBILIDADE;
+    int acs712Value    = analogRead(ACS712_PIN);
+    float sensorVoltage= (acs712Value * VCC) / ADC_RESOLUTION;
+    float corrente     = abs((sensorVoltage - OFFSET) / ACS712_SENSIBILIDADE * 1000.0);
 
-    double lat = gps.location.lat();
-    double lon = gps.location.lng();
+    enviarDadosMQTT(temperatura, humidade, lux, estaChovendo,
+                    gasDetectado, corrente,
+                    ultimaLat, ultimaLng, ultimaLocalizacao);
 
-    // Só busca localização uma vez
-    if (!localizacaoObtida) {
-      localizacaoCache = getLocationName(lat, lon);
-      if (localizacaoCache.length() > 0) {
-        localizacaoObtida = true;
-      }
+    Serial.printf("H: %.1f%%  T: %.1f°C  LUX: %.1f  Chuva: %s  Gás: %s  Corrente: %.0fmA\n",
+                  humidade, temperatura, lux,
+                  estaChovendo ? "SIM" : "NÃO",
+                  gasDetectado ? "SIM" : "NÃO",
+                  corrente);
+
+    if (ultimaLat != 0 && ultimaLng != 0) {
+      Serial.printf("GPS: %.6f, %.6f  Local: %s\n\n",
+                    ultimaLat, ultimaLng, ultimaLocalizacao.c_str());
     }
-
-    enviarDadosMQTT(temperatura, umidade, lux, chuva, gas, corrente, lat, lon, localizacaoCache);
   }
+
+  mqttClient.loop();
 }
