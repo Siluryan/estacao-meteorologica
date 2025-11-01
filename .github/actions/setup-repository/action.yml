@@ -1,0 +1,41 @@
+name: 'Setup Repository'
+description: 'Faz checkout do repositório Git na EC2 via SSM'
+
+inputs:
+  instance_id:
+    description: 'Instance ID da EC2'
+    required: true
+  project_path:
+    description: 'Caminho do projeto'
+    required: false
+    default: '~/estacao-meteorologica'
+  repository_url:
+    description: 'URL do repositório Git'
+    required: true
+  branch:
+    description: 'Branch para fazer checkout'
+    required: false
+    default: 'main'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Repository
+      uses: ./.github/actions/run-ssm-command
+      with:
+        instance_id: ${{ inputs.instance_id }}
+        command: |
+          PROJECT_PATH="${{ inputs.project_path }}"
+          REPO_URL="${{ inputs.repository_url }}"
+          BRANCH="${{ inputs.branch }}"
+          
+          mkdir -p $PROJECT_PATH
+          cd $PROJECT_PATH
+          
+          if [ -d .git ]; then
+            git fetch origin
+            git checkout $BRANCH
+            git pull origin $BRANCH
+          else
+            git clone -b $BRANCH $REPO_URL .
+          fi

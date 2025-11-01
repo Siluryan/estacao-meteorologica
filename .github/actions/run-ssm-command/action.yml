@@ -1,0 +1,107 @@
+name: 'Run SSM Command'
+description: 'Executa comandos na EC2 usando AWS Systems Manager (sem SSH)'
+
+inputs:
+  instance_id:
+    description: 'Instance ID da EC2'
+    required: true
+  command:
+    description: 'Comando a ser executado (suporta múltiplas linhas)'
+    required: true
+  region:
+    description: 'Região AWS'
+    required: false
+    default: 'us-east-1'
+
+outputs:
+  output:
+    description: 'Saída do comando executado'
+    value: ${{ steps.execute.outputs.output }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Execute command via SSM
+      id: execute
+      shell: bash
+      run: |
+        COMMAND_FILE=$(mktemp)
+        cat > "$COMMAND_FILE" << 'CMDEOF'
+${{ inputs.command }}
+CMDEOF
+        
+        COMMAND_CONTENT=$(cat "$COMMAND_FILE")
+        rm "$COMMAND_FILE"
+        
+        ESCAPED_COMMAND=$(printf '%s\n' "$COMMAND_CONTENT" | \
+          sed 's/\\/\\\\/g' | \
+          sed 's/"/\\"/g' | \
+          tr '\n' '\n' | \
+          sed ':a;N;$!ba;s/\n/\\n/g')
+        
+        COMMANDS_JSON="[\"$ESCAPED_COMMAND\"]"
+        
+        COMMAND_ID=$(aws ssm send-command \
+          --instance-ids "${{ inputs.instance_id }}" \
+          --document-name "AWS-RunShellScript" \
+          --parameters "commands=$COMMANDS_JSON" \
+          --region "${{ inputs.region }}" \
+          --query 'Command.CommandId' \
+          --output text)
+        
+        sleep 10
+        
+        MAX_WAIT=120
+        WAITED=0
+        while [ $WAITED -lt $MAX_WAIT ]; do
+          STATUS=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ inputs.instance_id }}" \
+            --region "${{ inputs.region }}" \
+            --query 'Status' \
+            --output text 2>/dev/null || echo "InProgress")
+          
+          if [ "$STATUS" = "Success" ] || [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ] || [ "$STATUS" = "TimedOut" ]; then
+            break
+          fi
+          
+          sleep 5
+          WAITED=$((WAITED + 5))
+        done
+        
+        OUTPUT=$(aws ssm get-command-invocation \
+          --command-id "$COMMAND_ID" \
+          --instance-id "${{ inputs.instance_id }}" \
+          --region "${{ inputs.region }}" \
+          --query 'StandardOutputContent' \
+          --output text 2>/dev/null || echo "")
+        
+        ERROR=$(aws ssm get-command-invocation \
+          --command-id "$COMMAND_ID" \
+          --instance-id "${{ inputs.instance_id }}" \
+          --region "${{ inputs.region }}" \
+          --query 'StandardErrorContent' \
+          --output text 2>/dev/null || echo "")
+        
+        STATUS=$(aws ssm get-command-invocation \
+          --command-id "$COMMAND_ID" \
+          --instance-id "${{ inputs.instance_id }}" \
+          --region "${{ inputs.region }}" \
+          --query 'Status' \
+          --output text)
+        
+        if [ -n "$OUTPUT" ]; then
+          echo "$OUTPUT"
+        fi
+        
+        if [ -n "$ERROR" ]; then
+          echo "$ERROR" >&2
+        fi
+        
+        if [ "$STATUS" != "Success" ]; then
+          exit 1
+        fi
+        
+        echo "output<<EOF" >> $GITHUB_OUTPUT
+        echo "$OUTPUT" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT

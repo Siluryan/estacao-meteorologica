@@ -1,0 +1,305 @@
+name: Setup Parameter Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      postgres_db:
+        description: 'PostgreSQL database name'
+        required: false
+        default: 'sensores_prod'
+      postgres_user:
+        description: 'PostgreSQL user'
+        required: false
+        default: 'sensores_prod'
+      postgres_password:
+        description: 'PostgreSQL password (SecureString)'
+        required: true
+        type: string
+      database_url:
+        description: 'Database URL (optional, SecureString)'
+        required: false
+        type: string
+      
+      mqtt_broker:
+        description: 'MQTT broker hostname'
+        required: false
+        default: 'rabbitmq'
+      mqtt_port:
+        description: 'MQTT port'
+        required: false
+        default: '1883'
+      mqtt_topic:
+        description: 'MQTT topic'
+        required: false
+        default: 'estacao/meteorologica'
+      mqtt_username:
+        description: 'MQTT username'
+        required: true
+        type: string
+      mqtt_password:
+        description: 'MQTT password (SecureString)'
+        required: true
+        type: string
+      
+      rabbitmq_user:
+        description: 'RabbitMQ default user'
+        required: false
+        default: 'mqtt_user'
+      rabbitmq_password:
+        description: 'RabbitMQ default password (SecureString)'
+        required: true
+        type: string
+      
+      django_secret_key:
+        description: 'Django SECRET_KEY (SecureString)'
+        required: true
+        type: string
+      django_debug:
+        description: 'Django DEBUG (0 or 1)'
+        required: false
+        default: '0'
+      django_superuser_email:
+        description: 'Django superuser email'
+        required: true
+        type: string
+      django_superuser_username:
+        description: 'Django superuser username'
+        required: false
+        default: 'admin'
+      django_superuser_password:
+        description: 'Django superuser password (SecureString)'
+        required: true
+        type: string
+      
+      parameter_prefix:
+        description: 'Parameter Store prefix'
+        required: false
+        default: '/agrostation/prod'
+      aws_region:
+        description: 'AWS Region'
+        required: false
+        default: 'us-east-1'
+      overwrite:
+        description: 'Overwrite existing parameters'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ github.event.inputs.aws_region || 'us-east-1' }}
+  PARAM_PREFIX: ${{ github.event.inputs.parameter_prefix || '/agrostation/prod' }}
+
+jobs:
+  setup-parameters:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::914256152987:role/Agrostation
+          role-session-name: github-actions-setup-params
+
+      - name: Create Database Parameters
+        run: |
+          echo "Creating database parameters..."
+          
+          OVERWRITE_FLAG=""
+          if [ "${{ github.event.inputs.overwrite }}" = "true" ]; then
+            OVERWRITE_FLAG="--overwrite"
+          fi
+          
+          aws ssm put-parameter \
+            --name "${{ env.PARAM_PREFIX }}/database/name" \
+            --value "${{ github.event.inputs.postgres_db }}" \
+            --type "String" \
+            --region "${{ env.AWS_REGION }}" \
+            $OVERWRITE_FLAG \
+            --description "AgroStation Production: PostgreSQL database name"
+          
+          aws ssm put-parameter \
+            --name "${{ env.PARAM_PREFIX }}/database/user" \
+            --value "${{ github.event.inputs.postgres_user }}" \
+            --type "String" \
+            --region "${{ env.AWS_REGION }}" \
+            $OVERWRITE_FLAG \
+            --description "AgroStation Production: PostgreSQL user"
+          
+          aws ssm put-parameter \
+            --name "${{ env.PARAM_PREFIX }}/database/password" \
+            --value "${{ github.event.inputs.postgres_password }}" \
+            --type "SecureString" \
+            --region "${{ env.AWS_REGION }}" \
+            $OVERWRITE_FLAG \
+            --description "AgroStation Production: PostgreSQL password"
+          
+          if [ -n "${{ github.event.inputs.database_url }}" ]; then
+            aws ssm put-parameter \
+              --name "${{ env.PARAM_PREFIX }}/database/url" \
+              --value "${{ github.event.inputs.database_url }}" \
+              --type "SecureString" \
+              --region "${{ env.AWS_REGION }}" \
+              $OVERWRITE_FLAG \
+              --description "AgroStation Production: Database URL"
+          fi
+          
+          echo "Database parameters created"
+
+      - name: Create MQTT Parameters
+        run: |
+          echo "Creating MQTT parameters..."
+          
+          OVERWRITE_FLAG=""
+          if [ "${{ github.event.inputs.overwrite }}" = "true" ]; then
+            OVERWRITE_FLAG="--overwrite"
+          fi
+          
+          aws ssm put-parameter \
+            --name "${{ env.PARAM_PREFIX }}/mqtt/broker" \
+            --value "${{ github.event.inputs.mqtt_broker }}" \
+            --type "String" \
+            --region "${{ env.AWS_REGION }}" \
+            $OVERWRITE_FLAG \
+            --description "AgroStation Production: MQTT broker hostname"
+          
+          aws ssm put-parameter \
+            --name "${{ env.PARAM_PREFIX }}/mqtt/port" \
+            --value "${{ github.event.inputs.mqtt_port }}" \
+            --type "String" \
+            --region "${{ env.AWS_REGION }}" \
+            $OVERWRITE_FLAG \
+            --description "AgroStation Production: MQTT port"
+          
+          aws ssm put-parameter \
+            --name "${{ env.PARAM_PREFIX }}/mqtt/topic" \
+            --value "${{ github.event.inputs.mqtt_topic }}" \
+            --type "String" \
+            --region "${{ env.AWS_REGION }}" \
+            $OVERWRITE_FLAG \
+            --description "AgroStation Production: MQTT topic"
+          
+          aws ssm put-parameter \
+            --name "${{ env.PARAM_PREFIX }}/mqtt/username" \
+            --value "${{ github.event.inputs.mqtt_username }}" \
+            --type "String" \
+            --region "${{ env.AWS_REGION }}" \
+            $OVERWRITE_FLAG \
+            --description "AgroStation Production: MQTT username"
+          
+          aws ssm put-parameter \
+            --name "${{ env.PARAM_PREFIX }}/mqtt/password" \
+            --value "${{ github.event.inputs.mqtt_password }}" \
+            --type "SecureString" \
+            --region "${{ env.AWS_REGION }}" \
+            $OVERWRITE_FLAG \
+            --description "AgroStation Production: MQTT password"
+          
+          echo "MQTT parameters created"
+
+      - name: Create RabbitMQ Parameters
+        run: |
+          echo "Creating RabbitMQ parameters..."
+          
+          OVERWRITE_FLAG=""
+          if [ "${{ github.event.inputs.overwrite }}" = "true" ]; then
+            OVERWRITE_FLAG="--overwrite"
+          fi
+          
+          aws ssm put-parameter \
+            --name "${{ env.PARAM_PREFIX }}/rabbitmq/user" \
+            --value "${{ github.event.inputs.rabbitmq_user }}" \
+            --type "String" \
+            --region "${{ env.AWS_REGION }}" \
+            $OVERWRITE_FLAG \
+            --description "AgroStation Production: RabbitMQ default user"
+          
+          aws ssm put-parameter \
+            --name "${{ env.PARAM_PREFIX }}/rabbitmq/password" \
+            --value "${{ github.event.inputs.rabbitmq_password }}" \
+            --type "SecureString" \
+            --region "${{ env.AWS_REGION }}" \
+            $OVERWRITE_FLAG \
+            --description "AgroStation Production: RabbitMQ default password"
+          
+          echo "RabbitMQ parameters created"
+
+      - name: Create Django Parameters
+        run: |
+          echo "Creating Django parameters..."
+          
+          OVERWRITE_FLAG=""
+          if [ "${{ github.event.inputs.overwrite }}" = "true" ]; then
+            OVERWRITE_FLAG="--overwrite"
+          fi
+          
+          aws ssm put-parameter \
+            --name "${{ env.PARAM_PREFIX }}/django/secret_key" \
+            --value "${{ github.event.inputs.django_secret_key }}" \
+            --type "SecureString" \
+            --region "${{ env.AWS_REGION }}" \
+            $OVERWRITE_FLAG \
+            --description "AgroStation Production: Django SECRET_KEY"
+          
+          aws ssm put-parameter \
+            --name "${{ env.PARAM_PREFIX }}/django/debug" \
+            --value "${{ github.event.inputs.django_debug }}" \
+            --type "String" \
+            --region "${{ env.AWS_REGION }}" \
+            $OVERWRITE_FLAG \
+            --description "AgroStation Production: Django DEBUG flag"
+          
+          echo "Django parameters created"
+
+      - name: Create Django Superuser Parameters
+        run: |
+          echo "Creating Django superuser parameters..."
+          
+          OVERWRITE_FLAG=""
+          if [ "${{ github.event.inputs.overwrite }}" = "true" ]; then
+            OVERWRITE_FLAG="--overwrite"
+          fi
+          
+          aws ssm put-parameter \
+            --name "${{ env.PARAM_PREFIX }}/django/superuser/email" \
+            --value "${{ github.event.inputs.django_superuser_email }}" \
+            --type "String" \
+            --region "${{ env.AWS_REGION }}" \
+            $OVERWRITE_FLAG \
+            --description "AgroStation Production: Django superuser email"
+          
+          aws ssm put-parameter \
+            --name "${{ env.PARAM_PREFIX }}/django/superuser/username" \
+            --value "${{ github.event.inputs.django_superuser_username }}" \
+            --type "String" \
+            --region "${{ env.AWS_REGION }}" \
+            $OVERWRITE_FLAG \
+            --description "AgroStation Production: Django superuser username"
+          
+          aws ssm put-parameter \
+            --name "${{ env.PARAM_PREFIX }}/django/superuser/password" \
+            --value "${{ github.event.inputs.django_superuser_password }}" \
+            --type "SecureString" \
+            --region "${{ env.AWS_REGION }}" \
+            $OVERWRITE_FLAG \
+            --description "AgroStation Production: Django superuser password"
+          
+          echo "Django superuser parameters created"
+
+      - name: Verify Parameters
+        run: |
+          echo "Verifying created parameters..."
+          
+          aws ssm describe-parameters \
+            --filters "Key=Name,Values=${{ env.PARAM_PREFIX }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query 'Parameters[*].[Name,Type]' \
+            --output table
+          
+          echo ""
+          echo "All parameters created successfully!"
+          echo "Prefix: ${{ env.PARAM_PREFIX }}"
+          echo "Region: ${{ env.AWS_REGION }}"

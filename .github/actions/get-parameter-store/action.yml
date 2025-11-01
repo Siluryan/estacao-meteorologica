@@ -1,0 +1,48 @@
+name: 'Get Parameter Store'
+description: 'Recupera parâmetros do AWS Systems Manager Parameter Store'
+
+inputs:
+  parameter_name:
+    description: 'Nome do parâmetro no Parameter Store'
+    required: true
+  region:
+    description: 'Região AWS'
+    required: false
+    default: 'us-east-1'
+  decrypt:
+    description: 'Descriptografar parâmetro seguro'
+    required: false
+    default: 'true'
+
+outputs:
+  value:
+    description: 'Valor do parâmetro'
+    value: ${{ steps.get-param.outputs.value }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Get parameter from Parameter Store
+      id: get-param
+      shell: bash
+      run: |
+        DECRYPT_FLAG=""
+        if [ "${{ inputs.decrypt }}" = "true" ]; then
+          DECRYPT_FLAG="--with-decryption"
+        fi
+        
+        VALUE=$(aws ssm get-parameter \
+          --name "${{ inputs.parameter_name }}" \
+          --region "${{ inputs.region }}" \
+          $DECRYPT_FLAG \
+          --query 'Parameter.Value' \
+          --output text 2>/dev/null || echo "")
+        
+        if [ -z "$VALUE" ]; then
+          exit 0
+        fi
+        
+        echo "value<<EOF" >> $GITHUB_OUTPUT
+        echo "$VALUE" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+

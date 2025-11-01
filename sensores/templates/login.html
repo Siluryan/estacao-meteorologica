@@ -1,76 +1,51 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Login - Sistema de Sensores</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f7f8;
-            margin: 0;
-            padding: 20px;
-        }
+{% extends 'base.html' %}
+{% load static %}
 
-        .login-container {
-            max-width: 400px;
-            margin: 50px auto;
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
+{% block title %}Login - AgroStation{% endblock %}
 
-        h2 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 30px;
-        }
-
-        .login-form input {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
-        }
-
-        .login-form button {
-            width: 100%;
-            padding: 12px;
-            background-color: #007BFF;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-        .login-form button:hover {
-            background-color: #0056b3;
-        }
-
-        .error-message {
-            color: red;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-    </style>
-</head>
-<body>
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; min-height: 70vh;">
     <div class="login-container">
-        <h2>Login</h2>
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <i class="fas fa-seedling" style="font-size: 3rem; background: var(--gradient-tech); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"></i>
+            <h1 style="margin-top: 1rem; background: var(--gradient-tech); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">AgroStation</h1>
+            <p class="text-muted">Sistema de Monitoramento Ambiental</p>
+        </div>
+
         {% if form.errors %}
-        <div class="error-message">
-            Usuário ou senha incorretos. Por favor, tente novamente.
+        <div style="padding: 1rem; background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--danger-color); border-radius: 0.5rem; margin-bottom: 1.5rem;">
+            <p style="color: var(--danger-color); margin: 0;">
+                <i class="fas fa-exclamation-circle"></i> Usuário ou senha incorretos.
+            </p>
         </div>
         {% endif %}
+
         <form method="post" class="login-form">
             {% csrf_token %}
-            <input type="text" name="username" placeholder="Usuário" required>
-            <input type="password" name="password" placeholder="Senha" required>
-            <button type="submit">Entrar</button>
+            <div style="margin-bottom: 1rem;">
+                <label for="id_username" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">
+                    <i class="fas fa-user"></i> Usuário
+                </label>
+                <input type="text" name="username" id="id_username" required autofocus placeholder="Digite seu usuário">
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <label for="id_password" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-primary);">
+                    <i class="fas fa-lock"></i> Senha
+                </label>
+                <input type="password" name="password" id="id_password" required placeholder="Digite sua senha">
+            </div>
+            
+            <button type="submit">
+                <i class="fas fa-sign-in-alt"></i> Entrar
+            </button>
         </form>
+
+        <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); text-align: center;">
+            <p class="text-muted" style="font-size: 0.875rem;">
+                <i class="fas fa-shield-alt"></i> Acesso seguro e protegido
+            </p>
+        </div>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

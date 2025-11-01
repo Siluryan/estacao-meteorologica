@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class DadoSensor(models.Model):
     data = models.DateTimeField(auto_now_add=True)
     temperatura = models.FloatField()
@@ -15,3 +16,9 @@ class DadoSensor(models.Model):
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
     localizacao = models.CharField(max_length=255, null=True, blank=True)
+    vento_kmh = models.FloatField(default=0, null=True, blank=True)
+    vento_ms = models.FloatField(default=0, null=True, blank=True)
+    umidade_solo_pct = models.FloatField(default=0, null=True, blank=True)
+    pressao_hpa = models.FloatField(default=0, null=True, blank=True)
+    altitude_m = models.FloatField(default=0, null=True, blank=True)
+    temperatura_bmp = models.FloatField(default=0, null=True, blank=True)

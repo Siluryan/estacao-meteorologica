@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Ajuda - AgroStation{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-question-circle"></i> Central de Ajuda</h1>
+    <p>Guia completo para utilizar o sistema AgroStation</p>
+</div>
+
+<div class="card">
+    <h2><i class="fas fa-play-circle"></i> Guia de Início Rápido</h2>
+    <div style="margin-top: 1rem;">
+        <h3>1. Acessando o Dashboard</h3>
+        <p>O Dashboard é a página principal do sistema. Aqui você pode visualizar todos os dados dos sensores em tempo real.</p>
+        
+        <h3 style="margin-top: 1.5rem;">2. Entendendo os Indicadores</h3>
+        <ul style="list-style: none; padding: 0;">
+            <li style="padding: 0.5rem 0;"><span class="badge bg-success" style="margin-right: 0.5rem;">Normal</span> Valores dentro dos parâmetros esperados</li>
+            <li style="padding: 0.5rem 0;"><span class="badge bg-warning" style="margin-right: 0.5rem;">Atenção</span> Valores que requerem monitoramento</li>
+            <li style="padding: 0.5rem 0;"><span class="badge bg-danger" style="margin-right: 0.5rem;">Alerta</span> Valores críticos que necessitam ação imediata</li>
+        </ul>
+        
+        <h3 style="margin-top: 1.5rem;">3. Status do WebSocket</h3>
+        <p>O indicador de status mostra se a conexão em tempo real está ativa. Se estiver "Desconectado", os dados podem não atualizar automaticamente.</p>
+    </div>
+</div>
+
+<div class="card">
+    <h2><i class="fas fa-chart-bar"></i> Página de Estatísticas</h2>
+    <p>A página de Estatísticas permite analisar dados históricos de três formas:</p>
+    <div style="margin-top: 1rem;">
+        <h3><i class="fas fa-calendar-day"></i> Hoje</h3>
+        <p>Visualiza dados do dia atual, hora a hora.</p>
+        
+        <h3 style="margin-top: 1rem;"><i class="fas fa-calendar-week"></i> Últimos 7 dias</h3>
+        <p>Mostra médias diárias da última semana.</p>
+        
+        <h3 style="margin-top: 1rem;"><i class="fas fa-calendar-alt"></i> Últimos 30 dias</h3>
+        <p>Apresenta tendências mensais com médias diárias.</p>
+    </div>
+    <p style="margin-top: 1rem;"><strong>Dica:</strong> Use as abas "Tabelas" e "Gráficos" para alternar entre visualizações diferentes dos mesmos dados.</p>
+</div>
+
+<div class="card">
+    <h2><i class="fas fa-info-circle"></i> Interpretando os Sensores</h2>
+    <div style="margin-top: 1rem;">
+        <h3>Temperatura</h3>
+        <p><strong>Faixa ideal:</strong> 15°C a 35°C para a maioria das culturas</p>
+        <p><strong>Alerta:</strong> Valores abaixo de 5°C ou acima de 40°C podem ser críticos</p>
+        
+        <h3 style="margin-top: 1rem;">Umidade do Ar</h3>
+        <p><strong>Faixa ideal:</strong> 40% a 70%</p>
+        <p><strong>Alerta:</strong> Umidade muito baixa (<30%) ou muito alta (>90%) pode afetar plantas e equipamentos</p>
+        
+        <h3 style="margin-top: 1rem;">Qualidade do Ar (PM2.5)</h3>
+        <ul style="list-style: none; padding: 0;">
+            <li><span style="color: var(--success-color);">●</span> <strong>0-12 µg/m³:</strong> Boa qualidade</li>
+            <li><span style="color: var(--warning-color);">●</span> <strong>12-35 µg/m³:</strong> Moderada</li>
+            <li><span style="color: #FF9800;">●</span> <strong>35-55 µg/m³:</strong> Ruim para grupos sensíveis</li>
+            <li><span style="color: var(--danger-color);">●</span> <strong>Acima de 55 µg/m³:</strong> Perigoso</li>
+        </ul>
+        
+        <h3 style="margin-top: 1rem;">Velocidade do Vento</h3>
+        <p><strong>Normal:</strong> 0-20 km/h</p>
+        <p><strong>Atenção:</strong> 20-40 km/h</p>
+        <p><strong>Alerta:</strong> Acima de 40 km/h pode causar danos</p>
+    </div>
+</div>
+
+<div class="card">
+    <h2><i class="fas fa-exclamation-triangle"></i> Alertas e Segurança</h2>
+    <div style="margin-top: 1rem;">
+        <h3>Detecção de Gás</h3>
+        <p>Se o sensor MQ-2 detectar gás, um alerta vermelho será exibido. Nestes casos:</p>
+        <ol style="margin-left: 1.5rem; margin-top: 0.5rem;">
+            <li>Ventile a área imediatamente</li>
+            <li>Verifique possíveis vazamentos</li>
+            <li>Evite acender chamas ou ligar equipamentos elétricos</li>
+            <li>Se necessário, acione o suporte técnico</li>
+        </ol>
+        
+        <h3 style="margin-top: 1rem;">Consumo Elétrico</h3>
+        <p>O sistema monitora o consumo elétrico. Valores acima de 4000mA indicam alto consumo que pode:</p>
+        <ul style="list-style: disc; margin-left: 1.5rem; margin-top: 0.5rem;">
+            <li>Gerar custos elevados</li>
+            <li>Indicar possível problema nos equipamentos</li>
+            <li>Sobrecarregar o sistema</li>
+        </ul>
+    </div>
+</div>
+
+<div class="card">
+    <h2><i class="fas fa-map-marked-alt"></i> Geolocalização</h2>
+    <p>O mapa mostra a localização precisa da estação meteorológica baseada nos dados GPS recebidos do dispositivo IoT.</p>
+    <p style="margin-top: 0.5rem;"><strong>Nota:</strong> Se o mapa não aparecer ou mostrar "--", o dispositivo ainda não enviou dados de localização.</p>
+</div>
+
+<div class="card">
+    <h2><i class="fas fa-cog"></i> Resolução de Problemas</h2>
+    <div style="margin-top: 1rem;">
+        <h3>Dados não atualizam</h3>
+        <ul style="list-style: disc; margin-left: 1.5rem; padding: 0;">
+            <li>Verifique o status do WebSocket no topo da página</li>
+            <li>Recarregue a página (F5)</li>
+            <li>Verifique se o dispositivo IoT está conectado</li>
+            <li>Confirme se o serviço MQTT está ativo</li>
+        </ul>
+        
+        <h3 style="margin-top: 1.5rem;">Gráficos não aparecem</h3>
+        <ul style="list-style: disc; margin-left: 1.5rem; padding: 0;">
+            <li>Verifique sua conexão com a internet</li>
+            <li>Limpe o cache do navegador</li>
+            <li>Tente usar outro navegador</li>
+        </ul>
+        
+        <h3 style="margin-top: 1.5rem;">Página não carrega</h3>
+        <ul style="list-style: disc; margin-left: 1.5rem; padding: 0;">
+            <li>Verifique se está logado corretamente</li>
+            <li>Confirme se os serviços Docker estão rodando</li>
+            <li>Verifique os logs do sistema</li>
+        </ul>
+    </div>
+</div>
+
+<div class="card">
+    <h2><i class="fas fa-keyboard"></i> Atalhos e Dicas</h2>
+    <ul style="list-style: none; padding: 0; margin-top: 1rem;">
+        <li style="padding: 0.5rem 0;"><strong>F5:</strong> Atualizar página e reconectar WebSocket</li>
+        <li style="padding: 0.5rem 0;"><strong>Ctrl/Cmd + R:</strong> Recarregar forçando atualização de cache</li>
+        <li style="padding: 0.5rem 0;"><strong>Clique nos gráficos:</strong> Alguns gráficos permitem zoom ao clicar e arrastar</li>
+        <li style="padding: 0.5rem 0;"><strong>Exportar dados:</strong> Use a página de Estatísticas para visualizar dados históricos</li>
+    </ul>
+</div>
+
+<div class="card">
+    <h2><i class="fas fa-life-ring"></i> Precisa de Mais Ajuda?</h2>
+    <p>Se sua dúvida não foi respondida aqui, entre em contato:</p>
+    <div style="margin-top: 1rem; padding: 1rem; background: #f7fafc; border-radius: 0.5rem;">
+        <p><i class="fas fa-envelope" style="color: var(--primary-color); margin-right: 0.5rem;"></i> <strong>Email:</strong> suporte@agrostation.com</p>
+        <p style="margin-top: 0.5rem;"><i class="fas fa-book" style="color: var(--primary-color); margin-right: 0.5rem;"></i> <strong>Documentação:</strong> Consulte a página <a href="{% url 'sobre' %}">Sobre</a> para mais informações técnicas</p>
+    </div>
+</div>
+{% endblock %}
+

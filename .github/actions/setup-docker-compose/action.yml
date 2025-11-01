@@ -1,0 +1,26 @@
+name: 'Setup Docker Compose'
+description: 'Instala Docker Compose na EC2 via SSM'
+
+inputs:
+  instance_id:
+    description: 'Instance ID da EC2'
+    required: true
+  version:
+    description: 'Versão do Docker Compose'
+    required: false
+    default: 'v2.24.5'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Docker Compose
+      uses: ./.github/actions/run-ssm-command
+      with:
+        instance_id: ${{ inputs.instance_id }}
+        command: |
+          if command -v docker-compose &> /dev/null; then
+            exit 0
+          fi
+          sudo curl -L "https://github.com/docker/compose/releases/download/${{ inputs.version }}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          [ ! -f /usr/bin/docker-compose ] && sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose || true

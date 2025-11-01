@@ -8,7 +8,7 @@ services:
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.siluryan.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.siluryan.acme.email=guilhermerrdias@gmail.com"
       - "--certificatesresolvers.siluryan.acme.storage=/letsencrypt/acme.json"
       - "--certificatesresolvers.siluryan.acme.httpchallenge=true"
       - "--certificatesresolvers.siluryan.acme.httpchallenge.entrypoint=web"
@@ -22,7 +22,7 @@ services:
       - ./letsencrypt:/letsencrypt
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.dashboard.rule=Host(`${DOMAIN}`) && PathPrefix(`/dashboard`)"
+      - "traefik.http.routers.dashboard.rule=Host(`agrostation.ink`) && PathPrefix(`/dashboard`)"
       - "traefik.http.routers.dashboard.service=api@internal"
       - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.tls.certresolver=siluryan"
@@ -33,11 +33,12 @@ services:
     restart: unless-stopped
 
   web:
-    build: .
+    image: 914256152987.dkr.ecr.us-east-1.amazonaws.com/agrostation:latest
     command: >
       sh -c "python manage.py makemigrations sensores --noinput &&
              python manage.py migrate --noinput &&
-             python _superuser.py &&
+             python manage.py collectstatic --noinput &&
+             python scripts/create_superuser.py &&
              daphne -b 0.0.0.0 -p 8000 sensores_project.asgi:application"
     volumes:
       - .:/app
@@ -50,14 +51,14 @@ services:
         condition: service_started
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.sensores.rule=Host(`${DOMAIN:-localhost}`)"
+      - "traefik.http.routers.sensores.rule=Host(`agrostation.ink`) || Host(`www.agrostation.ink`)"
       - "traefik.http.routers.sensores.entrypoints=web"
       - "traefik.http.services.sensores.loadbalancer.server.port=8000"
-      - "traefik.http.middlewares.sensores.headers.customrequestheaders.X-Forwarded-Proto=https"
-      - "traefik.http.routers.sensores.middlewares=sensores@docker"
-      - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.middlewares.sensores-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.sensores-redirect.redirectscheme.permanent=true"
+      - "traefik.http.routers.sensores.middlewares=sensores-redirect@docker"
       - "traefik.http.middlewares.websocket.headers.customrequestheaders.X-Forwarded-Proto=https"
-      - "traefik.http.routers.sensores-secure.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.sensores-secure.rule=Host(`agrostation.ink`) || Host(`www.agrostation.ink`)"
       - "traefik.http.routers.sensores-secure.entrypoints=websecure"
       - "traefik.http.routers.sensores-secure.tls=true"
       - "traefik.http.routers.sensores-secure.tls.certresolver=siluryan"
@@ -68,7 +69,7 @@ services:
     restart: unless-stopped
 
   consumer:
-    build: .
+    image: 914256152987.dkr.ecr.us-east-1.amazonaws.com/agrostation:latest
     env_file:
       - .env
     depends_on:
@@ -80,7 +81,7 @@ services:
       - .:/app
     command: >
       sh -c "sleep 60 &&
-             python _consumer.py"
+             python scripts/mqtt_consumer.py"
     networks:
       - app_network
     restart: unless-stopped
@@ -111,21 +112,22 @@ services:
     entrypoint: sh -c "rabbitmq-server & sleep 10 && chmod +x /rabbitmq.sh && /rabbitmq.sh"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.rabbitmq.rule=Host(`${DOMAIN:-localhost}`) && PathPrefix(`/rabbitmq`)"
+      - "traefik.http.routers.rabbitmq.rule=Host(`agrostation.ink`) && PathPrefix(`/rabbitmq`)"
       - "traefik.http.routers.rabbitmq.entrypoints=web"
       - "traefik.http.services.rabbitmq.loadbalancer.server.port=15672"
       - "traefik.http.middlewares.rabbitmq-strip.stripprefix.prefixes=/rabbitmq"
-      - "traefik.http.routers.rabbitmq.middlewares=rabbitmq-strip@docker"
-      - "traefik.http.routers.rabbitmq-secure.rule=Host(`${DOMAIN}`) && PathPrefix(`/rabbitmq`)"
+      - "traefik.http.middlewares.rabbitmq-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.rabbitmq-redirect.redirectscheme.permanent=true"
+      - "traefik.http.routers.rabbitmq.middlewares=rabbitmq-redirect@docker"
+      - "traefik.http.routers.rabbitmq-secure.rule=Host(`agrostation.ink`) && PathPrefix(`/rabbitmq`)"
       - "traefik.http.routers.rabbitmq-secure.entrypoints=websecure"
       - "traefik.http.routers.rabbitmq-secure.tls=true"
       - "traefik.http.routers.rabbitmq-secure.tls.certresolver=siluryan"
       - "traefik.http.routers.rabbitmq-secure.middlewares=rabbitmq-strip@docker"
+    ports:
+      - "1883:1883"
     networks:
       - app_network
-    ports:
-    - "5672:5672"
-    - "1883:1883"
     restart: unless-stopped
 
   redis:

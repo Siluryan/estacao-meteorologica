@@ -1,0 +1,87 @@
+name: 'Setup SSM Agent'
+description: 'Verifica e instala AWS Systems Manager Agent na EC2 (permite acesso sem SSH)'
+
+inputs:
+  host:
+    description: 'Host/IP da EC2 (para SSH inicial se necessário)'
+    required: true
+  user:
+    description: 'Usuário SSH (ex: ec2-user, ubuntu)'
+    required: false
+    default: 'ec2-user'
+  ssh_key:
+    description: 'Chave SSH privada (apenas se SSM não estiver disponível)'
+    required: false
+  use_ssm:
+    description: 'Usar SSM Session Manager ao invés de SSH'
+    required: false
+    default: 'true'
+  instance_id:
+    description: 'Instance ID da EC2 (necessário para SSM)'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check SSM availability
+      shell: bash
+      id: check_ssm
+      run: |
+        if [ "${{ inputs.use_ssm }}" = "true" ] && [ -n "${{ inputs.instance_id }}" ]; then
+          echo "ssm_available=true" >> $GITHUB_OUTPUT
+          echo "Tentando usar SSM Session Manager..."
+          aws ssm describe-instance-information \
+            --filters "Key=InstanceIds,Values=${{ inputs.instance_id }}" \
+            --query 'InstanceInformationList[0].PingStatus' \
+            --output text | grep -q "Online" && echo "ssm_online=true" >> $GITHUB_OUTPUT || echo "ssm_online=false" >> $GITHUB_OUTPUT
+        else
+          echo "ssm_available=false" >> $GITHUB_OUTPUT
+          echo "ssm_online=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Install SSM Agent (if needed)
+      shell: bash
+      if: steps.check_ssm.outputs.ssm_online != 'true'
+      run: |
+        if [ -n "${{ inputs.ssh_key }}" ]; then
+          mkdir -p ~/.ssh
+          echo "${{ inputs.ssh_key }}" > ~/.ssh/ec2_key
+          chmod 600 ~/.ssh/ec2_key
+          ssh-keyscan -H "${{ inputs.host }}" >> ~/.ssh/known_hosts || true
+          
+          ssh -i ~/.ssh/ec2_key -o StrictHostKeyChecking=no \
+            "${{ inputs.user }}@${{ inputs.host }}" << 'EOF'
+          set -e
+          
+          echo "Verificando SSM Agent..."
+          if systemctl is-active --quiet amazon-ssm-agent; then
+            echo "SSM Agent já está rodando"
+            exit 0
+          fi
+          
+          echo "Instalando/configurando SSM Agent..."
+          
+          if [ -f /etc/os-release ]; then
+            . /etc/os-release
+            OS=$ID
+          fi
+          
+          if [ "$OS" = "amzn" ]; then
+            sudo yum install -y amazon-ssm-agent
+            sudo systemctl enable amazon-ssm-agent
+            sudo systemctl start amazon-ssm-agent
+          elif [ "$OS" = "ubuntu" ] || [ "$OS" = "debian" ]; then
+            sudo snap install amazon-ssm-agent --classic || \
+            (wget https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_amd64/amazon-ssm-agent.deb && \
+             sudo dpkg -i amazon-ssm-agent.deb && \
+             sudo systemctl enable amazon-ssm-agent && \
+             sudo systemctl start amazon-ssm-agent)
+          fi
+          
+          echo "SSM Agent instalado e iniciado"
+          EOF
+        else
+          echo "SSM Agent não está disponível e chave SSH não fornecida"
+          exit 1
+        fi
+
