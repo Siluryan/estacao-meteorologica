@@ -24,30 +24,48 @@ runs:
     - name: Execute command via SSM
       id: execute
       shell: bash
+      env:
+        COMMAND_INPUT: ${{ inputs.command }}
       run: |
         COMMAND_FILE=$(mktemp)
-        cat > "$COMMAND_FILE" << 'CMDEOF'
-${{ inputs.command }}
-CMDEOF
+        printf '%s\n' "$COMMAND_INPUT" > "$COMMAND_FILE"
         
-        COMMAND_CONTENT=$(cat "$COMMAND_FILE")
-        rm "$COMMAND_FILE"
+        SCRIPT_B64=$(base64 -w 0 < "$COMMAND_FILE")
         
-        ESCAPED_COMMAND=$(printf '%s\n' "$COMMAND_CONTENT" | \
-          sed 's/\\/\\\\/g' | \
-          sed 's/"/\\"/g' | \
-          tr '\n' '\n' | \
-          sed ':a;N;$!ba;s/\n/\\n/g')
+        EXEC_CMD="script=\$(mktemp); echo '$SCRIPT_B64' | base64 -d > \"\$script\"; bash \"\$script\"; rm -f \"\$script\""
         
-        COMMANDS_JSON="[\"$ESCAPED_COMMAND\"]"
+        if command -v jq &> /dev/null; then
+          COMMANDS_ARRAY=$(jq -n --arg cmd "$EXEC_CMD" '[$cmd]')
+          PARAMS_STRING="commands=$COMMANDS_ARRAY"
+        else
+          ESCAPED_CMD=$(printf '%s' "$EXEC_CMD" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+          PARAMS_STRING="commands=[\"$ESCAPED_CMD\"]"
+        fi
+        
+        echo "Enviando comando para SSM..."
         
         COMMAND_ID=$(aws ssm send-command \
           --instance-ids "${{ inputs.instance_id }}" \
           --document-name "AWS-RunShellScript" \
-          --parameters "commands=$COMMANDS_JSON" \
+          --parameters "$PARAMS_STRING" \
           --region "${{ inputs.region }}" \
           --query 'Command.CommandId' \
-          --output text)
+          --output text 2>&1) || {
+          echo "Erro ao enviar comando SSM: $COMMAND_ID"
+          echo "Parâmetros usados: $PARAMS_STRING"
+          rm -f "$COMMAND_FILE"
+          exit 1
+        }
+        
+        if [ -z "$COMMAND_ID" ] || [ "$COMMAND_ID" = "None" ]; then
+          echo "Erro: Falha ao obter Command ID do SSM"
+          echo "Resposta do AWS: $COMMAND_ID"
+          rm -f "$COMMAND_FILE"
+          exit 1
+        fi
+        
+        echo "Command ID: $COMMAND_ID"
+        rm -f "$COMMAND_FILE"
         
         sleep 10
         
