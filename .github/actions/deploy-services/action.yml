@@ -22,9 +22,40 @@ runs:
       with:
         instance_id: ${{ inputs.instance_id }}
         command: |
-          cd ${{ inputs.project_path }} || cd ~/estacao-meteorologica || cd /home/ec2-user/estacao-meteorologica || cd /opt/estacao-meteorologica
+          set -e
+          
+          INPUT_PATH="${{ inputs.project_path }}"
+          if [ "${INPUT_PATH#~}" != "$INPUT_PATH" ]; then
+            TRY_DIR="${INPUT_PATH/#\~/$HOME}"
+          else
+            TRY_DIR="$INPUT_PATH"
+          fi
+          
+          if [ -d "$TRY_DIR" ]; then
+            PROJECT_DIR="$TRY_DIR"
+          elif [ -d "$HOME/estacao-meteorologica" ]; then
+            PROJECT_DIR="$HOME/estacao-meteorologica"
+          elif [ -d "/home/ec2-user/estacao-meteorologica" ]; then
+            PROJECT_DIR="/home/ec2-user/estacao-meteorologica"
+          elif [ -d "/opt/estacao-meteorologica" ]; then
+            PROJECT_DIR="/opt/estacao-meteorologica"
+          else
+            echo "Erro: Diretório do projeto não encontrado"
+            echo "Procurando em: $TRY_DIR, $HOME/estacao-meteorologica, /home/ec2-user/estacao-meteorologica, /opt/estacao-meteorologica"
+            exit 1
+          fi
+          
+          cd "$PROJECT_DIR" || exit 1
+          echo "Trabalhando no diretório: $(pwd)"
+          
+          if [ ! -f "docker-compose.yaml" ] && [ ! -f "docker-compose.yml" ]; then
+            echo "Erro: Arquivo docker-compose.yaml ou docker-compose.yml não encontrado em $(pwd)"
+            ls -la
+            exit 1
+          fi
           
           docker-compose pull ${{ inputs.services }}
           docker-compose up -d --no-deps ${{ inputs.services }}
           docker-compose ps
+
 
