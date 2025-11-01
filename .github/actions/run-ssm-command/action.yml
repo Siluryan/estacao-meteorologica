@@ -24,11 +24,11 @@ runs:
     - name: Execute command via SSM
       id: execute
       shell: bash
+      env:
+        COMMAND_INPUT: ${{ inputs.command }}
       run: |
         COMMAND_FILE=$(mktemp)
-        cat > "$COMMAND_FILE" << 'CMDEOF'
-${{ inputs.command }}
-CMDEOF
+        printf '%s\n' "$COMMAND_INPUT" > "$COMMAND_FILE"
         
         COMMAND_CONTENT=$(cat "$COMMAND_FILE")
         rm "$COMMAND_FILE"
@@ -36,7 +36,6 @@ CMDEOF
         ESCAPED_COMMAND=$(printf '%s\n' "$COMMAND_CONTENT" | \
           sed 's/\\/\\\\/g' | \
           sed 's/"/\\"/g' | \
-          tr '\n' '\n' | \
           sed ':a;N;$!ba;s/\n/\\n/g')
         
         COMMANDS_JSON="[\"$ESCAPED_COMMAND\"]"
