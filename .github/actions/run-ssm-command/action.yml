@@ -33,8 +33,8 @@ runs:
         SCRIPT_CONTENT=$(cat "$COMMAND_FILE")
         
         if command -v jq &> /dev/null; then
-          CMD_JSON=$(echo "$SCRIPT_CONTENT" | jq -Rs .)
-          PARAMS_STRING="commands=[\"bash -c $CMD_JSON\"]"
+          COMMANDS_ARRAY=$(jq -n --arg script "$SCRIPT_CONTENT" '["bash -c \($script | @json)"]')
+          PARAMS_STRING="commands=$COMMANDS_ARRAY"
         else
           ESCAPED_CONTENT=$(printf '%s' "$SCRIPT_CONTENT" | \
             sed 's/\\/\\\\/g' | \
