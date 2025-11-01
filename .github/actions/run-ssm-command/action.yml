@@ -30,17 +30,16 @@ runs:
         COMMAND_FILE=$(mktemp)
         printf '%s\n' "$COMMAND_INPUT" > "$COMMAND_FILE"
         
-        SCRIPT_CONTENT=$(cat "$COMMAND_FILE")
+        SCRIPT_B64=$(base64 -w 0 < "$COMMAND_FILE")
+        
+        EXEC_CMD="script=\$(mktemp); echo '$SCRIPT_B64' | base64 -d > \"\$script\"; bash \"\$script\"; rm -f \"\$script\""
         
         if command -v jq &> /dev/null; then
-          COMMANDS_ARRAY=$(jq -n --arg script "$SCRIPT_CONTENT" '["bash -c \($script | @json)"]')
+          COMMANDS_ARRAY=$(jq -n --arg cmd "$EXEC_CMD" '[$cmd]')
           PARAMS_STRING="commands=$COMMANDS_ARRAY"
         else
-          ESCAPED_CONTENT=$(printf '%s' "$SCRIPT_CONTENT" | \
-            sed 's/\\/\\\\/g' | \
-            sed 's/"/\\"/g' | \
-            sed ':a;N;$!ba;s/\n/\\n/g')
-          PARAMS_STRING="commands=[\"bash -c \\\"$ESCAPED_CONTENT\\\"\"]"
+          ESCAPED_CMD=$(printf '%s' "$EXEC_CMD" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+          PARAMS_STRING="commands=[\"$ESCAPED_CMD\"]"
         fi
         
         echo "Enviando comando para SSM..."

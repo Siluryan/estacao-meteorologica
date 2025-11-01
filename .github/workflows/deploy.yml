@@ -57,70 +57,8 @@ jobs:
           echo "Tag: ${{ env.IMAGE_TAG }}"
           echo "Image URI: ${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}"
 
-  setup-ec2:
-    needs: build-and-push
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: arn:aws:iam::914256152987:role/Agrostation
-          role-session-name: github-actions-setup-ec2
-
-      - name: Wait for EC2 to be ready
-        uses: ./.github/actions/wait-ssm-ready
-        with:
-          instance_id: ${{ secrets.AGROSTATION_EC2_INSTANCE_ID }}
-
-      - name: Setup Docker
-        uses: ./.github/actions/setup-docker
-        with:
-          instance_id: ${{ secrets.AGROSTATION_EC2_INSTANCE_ID }}
-
-      - name: Setup Docker Compose
-        uses: ./.github/actions/setup-docker-compose
-        with:
-          instance_id: ${{ secrets.AGROSTATION_EC2_INSTANCE_ID }}
-
-      - name: Setup AWS CLI
-        uses: ./.github/actions/setup-aws-cli
-        with:
-          instance_id: ${{ secrets.AGROSTATION_EC2_INSTANCE_ID }}
-
-      - name: Setup Project Directory
-        uses: ./.github/actions/setup-project
-        with:
-          instance_id: ${{ secrets.AGROSTATION_EC2_INSTANCE_ID }}
-          project_path: ~/estacao-meteorologica
-
-      - name: Setup Repository
-        uses: ./.github/actions/setup-repository
-        with:
-          instance_id: ${{ secrets.AGROSTATION_EC2_INSTANCE_ID }}
-          project_path: ~/estacao-meteorologica
-          repository_url: https://github.com/${{ github.repository }}.git
-          branch: ${{ github.ref_name || 'main' }}
-
-      - name: Setup Environment from Parameter Store
-        uses: ./.github/actions/setup-env-from-params
-        with:
-          instance_id: ${{ secrets.AGROSTATION_EC2_INSTANCE_ID }}
-          project_path: ~/estacao-meteorologica
-          aws_region: ${{ env.AWS_REGION }}
-          parameter_prefix: '/agrostation/prod'
-
-      - name: Setup Docker Compose Service
-        uses: ./.github/actions/setup-docker-compose-service
-        with:
-          instance_id: ${{ secrets.AGROSTATION_EC2_INSTANCE_ID }}
-          project_path: ~/estacao-meteorologica
-
   deploy:
-    needs: [build-and-push, setup-ec2]
+    needs: build-and-push
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout code
