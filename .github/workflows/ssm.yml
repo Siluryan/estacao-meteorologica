@@ -1,4 +1,4 @@
-name: Setup Parameter Store
+name: Setup SSM
 
 on:
   workflow_dispatch:
