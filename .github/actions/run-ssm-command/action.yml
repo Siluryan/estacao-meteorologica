@@ -30,23 +30,43 @@ runs:
         COMMAND_FILE=$(mktemp)
         printf '%s\n' "$COMMAND_INPUT" > "$COMMAND_FILE"
         
-        COMMAND_CONTENT=$(cat "$COMMAND_FILE")
-        rm "$COMMAND_FILE"
+        SCRIPT_CONTENT=$(cat "$COMMAND_FILE")
         
-        ESCAPED_COMMAND=$(printf '%s\n' "$COMMAND_CONTENT" | \
-          sed 's/\\/\\\\/g' | \
-          sed 's/"/\\"/g' | \
-          sed ':a;N;$!ba;s/\n/\\n/g')
+        if command -v jq &> /dev/null; then
+          CMD_JSON=$(echo "$SCRIPT_CONTENT" | jq -Rs .)
+          PARAMS_STRING="commands=[\"bash -c $CMD_JSON\"]"
+        else
+          ESCAPED_CONTENT=$(printf '%s' "$SCRIPT_CONTENT" | \
+            sed 's/\\/\\\\/g' | \
+            sed 's/"/\\"/g' | \
+            sed ':a;N;$!ba;s/\n/\\n/g')
+          PARAMS_STRING="commands=[\"bash -c \\\"$ESCAPED_CONTENT\\\"\"]"
+        fi
         
-        COMMANDS_JSON="[\"$ESCAPED_COMMAND\"]"
+        echo "Enviando comando para SSM..."
         
         COMMAND_ID=$(aws ssm send-command \
           --instance-ids "${{ inputs.instance_id }}" \
           --document-name "AWS-RunShellScript" \
-          --parameters "commands=$COMMANDS_JSON" \
+          --parameters "$PARAMS_STRING" \
           --region "${{ inputs.region }}" \
           --query 'Command.CommandId' \
-          --output text)
+          --output text 2>&1) || {
+          echo "Erro ao enviar comando SSM: $COMMAND_ID"
+          echo "Parâmetros usados: $PARAMS_STRING"
+          rm -f "$COMMAND_FILE"
+          exit 1
+        }
+        
+        if [ -z "$COMMAND_ID" ] || [ "$COMMAND_ID" = "None" ]; then
+          echo "Erro: Falha ao obter Command ID do SSM"
+          echo "Resposta do AWS: $COMMAND_ID"
+          rm -f "$COMMAND_FILE"
+          exit 1
+        fi
+        
+        echo "Command ID: $COMMAND_ID"
+        rm -f "$COMMAND_FILE"
         
         sleep 10
         
