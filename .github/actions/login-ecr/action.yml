@@ -1,0 +1,26 @@
+name: 'Login to ECR'
+description: 'Faz login no ECR na EC2 usando SSM'
+
+inputs:
+  instance_id:
+    description: 'Instance ID da EC2'
+    required: true
+  ecr_repository:
+    description: 'ECR repository URI'
+    required: true
+  aws_region:
+    description: 'Região AWS'
+    required: false
+    default: 'us-east-1'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Login to ECR on EC2
+      uses: ./.github/actions/run-ssm-command
+      with:
+        instance_id: ${{ inputs.instance_id }}
+        command: |
+          aws ecr get-login-password --region ${{ inputs.aws_region }} | \
+            docker login --username AWS --password-stdin ${{ inputs.ecr_repository }}
+

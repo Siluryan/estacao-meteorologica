@@ -1,0 +1,94 @@
+name: 'Setup Environment from Parameter Store'
+description: 'Cria arquivo .env na EC2 usando valores do Parameter Store'
+
+inputs:
+  instance_id:
+    description: 'Instance ID da EC2'
+    required: true
+  project_path:
+    description: 'Caminho do projeto na EC2'
+    required: false
+    default: '~/estacao-meteorologica'
+  aws_region:
+    description: 'Região AWS'
+    required: false
+    default: 'us-east-1'
+  parameter_prefix:
+    description: 'Prefixo para os parâmetros no Parameter Store (ex: /agrostation/prod)'
+    required: false
+    default: '/agrostation/prod'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup .env from Parameter Store
+      uses: ./.github/actions/run-ssm-command
+      with:
+        instance_id: ${{ inputs.instance_id }}
+        command: |
+          PROJECT_PATH="${{ inputs.project_path }}"
+          PARAM_PREFIX="${{ inputs.parameter_prefix }}"
+          
+          cd $PROJECT_PATH || cd ~/estacao-meteorologica || cd /home/ec2-user/estacao-meteorologica || cd /opt/estacao-meteorologica
+          
+          get_param() {
+            aws ssm get-parameter \
+              --name "${PARAM_PREFIX}$1" \
+              --region ${{ inputs.aws_region }} \
+              --with-decryption \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo ""
+          }
+          
+          POSTGRES_DB=$(get_param /database/name)
+          POSTGRES_USER=$(get_param /database/user)
+          POSTGRES_PASSWORD=$(get_param /database/password)
+          
+          MQTT_BROKER=$(get_param /mqtt/broker)
+          MQTT_PORT=$(get_param /mqtt/port)
+          MQTT_TOPIC=$(get_param /mqtt/topic)
+          MQTT_USERNAME=$(get_param /mqtt/username)
+          MQTT_PASSWORD=$(get_param /mqtt/password)
+          
+          RABBITMQ_DEFAULT_USER=$(get_param /rabbitmq/user)
+          RABBITMQ_DEFAULT_PASS=$(get_param /rabbitmq/password)
+          
+          DJANGO_SECRET_KEY=$(get_param /django/secret_key)
+          DJANGO_DEBUG=$(get_param /django/debug)
+          
+          DATABASE_URL=$(get_param /database/url)
+          
+          DJANGO_SUPERUSER_EMAIL=$(get_param /django/superuser/email)
+          DJANGO_SUPERUSER_PASSWORD=$(get_param /django/superuser/password)
+          DJANGO_SUPERUSER_USERNAME=$(get_param /django/superuser/username)
+          
+          POSTGRES_DB=${POSTGRES_DB:-sensores_prod}
+          POSTGRES_USER=${POSTGRES_USER:-sensores_prod}
+          MQTT_BROKER=${MQTT_BROKER:-rabbitmq}
+          MQTT_PORT=${MQTT_PORT:-1883}
+          MQTT_TOPIC=${MQTT_TOPIC:-estacao/meteorologica}
+          RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER:-mqtt_user}
+          DJANGO_DEBUG=${DJANGO_DEBUG:-0}
+          
+          {
+            echo "POSTGRES_DB=${POSTGRES_DB}"
+            echo "POSTGRES_USER=${POSTGRES_USER}"
+            echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
+            echo ""
+            echo "MQTT_BROKER=${MQTT_BROKER}"
+            echo "MQTT_PORT=${MQTT_PORT}"
+            echo "MQTT_TOPIC=${MQTT_TOPIC}"
+            echo "MQTT_USERNAME=${MQTT_USERNAME}"
+            echo "MQTT_PASSWORD=${MQTT_PASSWORD}"
+            echo ""
+            echo "RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}"
+            echo "RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}"
+            echo ""
+            echo "SECRET_KEY=${DJANGO_SECRET_KEY}"
+            echo "DEBUG=${DJANGO_DEBUG}"
+            [ -n "$DATABASE_URL" ] && echo "DATABASE_URL=${DATABASE_URL}"
+            echo ""
+            [ -n "$DJANGO_SUPERUSER_EMAIL" ] && echo "DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL}"
+            [ -n "$DJANGO_SUPERUSER_PASSWORD" ] && echo "DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD}"
+            [ -n "$DJANGO_SUPERUSER_USERNAME" ] && echo "DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME}"
+          } > .env

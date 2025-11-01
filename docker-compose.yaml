@@ -33,7 +33,7 @@ services:
     restart: unless-stopped
 
   web:
-    build: .
+    image: 914256152987.dkr.ecr.us-east-1.amazonaws.com/agrostation:latest
     command: >
       sh -c "python manage.py makemigrations sensores --noinput &&
              python manage.py migrate --noinput &&
@@ -69,7 +69,7 @@ services:
     restart: unless-stopped
 
   consumer:
-    build: .
+    image: 914256152987.dkr.ecr.us-east-1.amazonaws.com/agrostation:latest
     env_file:
       - .env
     depends_on:

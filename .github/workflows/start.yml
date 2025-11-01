@@ -12,14 +12,14 @@ permissions:
 
 jobs:
   start-ec2:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: us-east-1
-          role-to-assume: arn:aws:iam::914256152987:role/GitHubActionsRole
-          role-session-name: pi5-start-ec2-instance
+          role-to-assume: arn:aws:iam::914256152987:role/Agostation
+          role-session-name: agrostation-start-ec2-instance
 
       - name: Start EC2 Instance
-        run: aws ec2 start-instances --instance-ids ${{ secrets.PI5_EC2_INSTANCE_ID }}
+        run: aws ec2 start-instances --instance-ids ${{ secrets.AGROSTATION_EC2_INSTANCE_ID }}

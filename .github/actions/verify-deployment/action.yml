@@ -1,0 +1,36 @@
+name: 'Verify Deployment'
+description: 'Verifica o status do deployment na EC2 via SSM'
+
+inputs:
+  instance_id:
+    description: 'Instance ID da EC2'
+    required: true
+  project_path:
+    description: 'Caminho do projeto na EC2'
+    required: false
+    default: '~/estacao-meteorologica'
+  services:
+    description: 'Serviços para verificar (separados por vírgula)'
+    required: false
+    default: 'web consumer'
+  log_lines:
+    description: 'Número de linhas de log para exibir'
+    required: false
+    default: '20'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Verify deployment
+      uses: ./.github/actions/run-ssm-command
+      with:
+        instance_id: ${{ inputs.instance_id }}
+        command: |
+          cd ${{ inputs.project_path }} || cd ~/estacao-meteorologica || cd /home/ec2-user/estacao-meteorologica || cd /opt/estacao-meteorologica
+          
+          docker-compose ps
+          
+          for service in ${{ inputs.services }}; do
+            docker-compose logs --tail=${{ inputs.log_lines }} $service || true
+          done
+

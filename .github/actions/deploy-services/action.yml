@@ -1,0 +1,30 @@
+name: 'Deploy Services'
+description: 'Faz deploy dos serviços Docker Compose na EC2 via SSM'
+
+inputs:
+  instance_id:
+    description: 'Instance ID da EC2'
+    required: true
+  project_path:
+    description: 'Caminho do projeto na EC2'
+    required: false
+    default: '~/estacao-meteorologica'
+  services:
+    description: 'Serviços para fazer deploy (separados por vírgula)'
+    required: false
+    default: 'web consumer'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Deploy services
+      uses: ./.github/actions/run-ssm-command
+      with:
+        instance_id: ${{ inputs.instance_id }}
+        command: |
+          cd ${{ inputs.project_path }} || cd ~/estacao-meteorologica || cd /home/ec2-user/estacao-meteorologica || cd /opt/estacao-meteorologica
+          
+          docker-compose pull ${{ inputs.services }}
+          docker-compose up -d --no-deps ${{ inputs.services }}
+          docker-compose ps
+
