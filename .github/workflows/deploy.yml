@@ -1,10 +1,6 @@
 name: Deploy to Production
 
 on:
-  push:
-    branches:
-      - main
-      - master
   workflow_dispatch:
     inputs:
       tag:

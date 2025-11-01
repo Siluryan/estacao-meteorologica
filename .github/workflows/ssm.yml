@@ -3,10 +3,6 @@ name: Setup Parameter Store
 on:
   workflow_dispatch:
     inputs:
-      postgres_db:
-        description: 'PostgreSQL database name'
-        required: false
-        default: 'sensores_prod'
       postgres_user:
         description: 'PostgreSQL user'
         required: false
@@ -15,23 +11,10 @@ on:
         description: 'PostgreSQL password (SecureString)'
         required: true
         type: string
-      database_url:
-        description: 'Database URL (optional, SecureString)'
-        required: false
-        type: string
-      
       mqtt_broker:
         description: 'MQTT broker hostname'
         required: false
         default: 'rabbitmq'
-      mqtt_port:
-        description: 'MQTT port'
-        required: false
-        default: '1883'
-      mqtt_topic:
-        description: 'MQTT topic'
-        required: false
-        default: 'estacao/meteorologica'
       mqtt_username:
         description: 'MQTT username'
         required: true
@@ -54,14 +37,6 @@ on:
         description: 'Django SECRET_KEY (SecureString)'
         required: true
         type: string
-      django_debug:
-        description: 'Django DEBUG (0 or 1)'
-        required: false
-        default: '0'
-      django_superuser_email:
-        description: 'Django superuser email'
-        required: true
-        type: string
       django_superuser_username:
         description: 'Django superuser username'
         required: false
@@ -70,28 +45,14 @@ on:
         description: 'Django superuser password (SecureString)'
         required: true
         type: string
-      
-      parameter_prefix:
-        description: 'Parameter Store prefix'
-        required: false
-        default: '/agrostation/prod'
-      aws_region:
-        description: 'AWS Region'
-        required: false
-        default: 'us-east-1'
-      overwrite:
-        description: 'Overwrite existing parameters'
-        required: false
-        default: true
-        type: boolean
 
 permissions:
   id-token: write
   contents: read
 
 env:
-  AWS_REGION: ${{ github.event.inputs.aws_region || 'us-east-1' }}
-  PARAM_PREFIX: ${{ github.event.inputs.parameter_prefix || '/agrostation/prod' }}
+  AWS_REGION: 'us-east-1'
+  PARAM_PREFIX: '/agrostation/prod'
 
 jobs:
   setup-parameters:
@@ -106,16 +67,11 @@ jobs:
 
       - name: Create Database Parameters
         run: |
-          echo "Creating database parameters..."
-          
-          OVERWRITE_FLAG=""
-          if [ "${{ github.event.inputs.overwrite }}" = "true" ]; then
-            OVERWRITE_FLAG="--overwrite"
-          fi
+          OVERWRITE_FLAG="--overwrite"
           
           aws ssm put-parameter \
             --name "${{ env.PARAM_PREFIX }}/database/name" \
-            --value "${{ github.event.inputs.postgres_db }}" \
+            --value "sensores_prod" \
             --type "String" \
             --region "${{ env.AWS_REGION }}" \
             $OVERWRITE_FLAG \
@@ -137,26 +93,12 @@ jobs:
             $OVERWRITE_FLAG \
             --description "AgroStation Production: PostgreSQL password"
           
-          if [ -n "${{ github.event.inputs.database_url }}" ]; then
-            aws ssm put-parameter \
-              --name "${{ env.PARAM_PREFIX }}/database/url" \
-              --value "${{ github.event.inputs.database_url }}" \
-              --type "SecureString" \
-              --region "${{ env.AWS_REGION }}" \
-              $OVERWRITE_FLAG \
-              --description "AgroStation Production: Database URL"
-          fi
           
           echo "Database parameters created"
 
       - name: Create MQTT Parameters
         run: |
-          echo "Creating MQTT parameters..."
-          
-          OVERWRITE_FLAG=""
-          if [ "${{ github.event.inputs.overwrite }}" = "true" ]; then
-            OVERWRITE_FLAG="--overwrite"
-          fi
+          OVERWRITE_FLAG="--overwrite"
           
           aws ssm put-parameter \
             --name "${{ env.PARAM_PREFIX }}/mqtt/broker" \
@@ -167,16 +109,8 @@ jobs:
             --description "AgroStation Production: MQTT broker hostname"
           
           aws ssm put-parameter \
-            --name "${{ env.PARAM_PREFIX }}/mqtt/port" \
-            --value "${{ github.event.inputs.mqtt_port }}" \
-            --type "String" \
-            --region "${{ env.AWS_REGION }}" \
-            $OVERWRITE_FLAG \
-            --description "AgroStation Production: MQTT port"
-          
-          aws ssm put-parameter \
             --name "${{ env.PARAM_PREFIX }}/mqtt/topic" \
-            --value "${{ github.event.inputs.mqtt_topic }}" \
+            --value "estacao/meteorologica" \
             --type "String" \
             --region "${{ env.AWS_REGION }}" \
             $OVERWRITE_FLAG \
@@ -202,12 +136,7 @@ jobs:
 
       - name: Create RabbitMQ Parameters
         run: |
-          echo "Creating RabbitMQ parameters..."
-          
-          OVERWRITE_FLAG=""
-          if [ "${{ github.event.inputs.overwrite }}" = "true" ]; then
-            OVERWRITE_FLAG="--overwrite"
-          fi
+          OVERWRITE_FLAG="--overwrite"
           
           aws ssm put-parameter \
             --name "${{ env.PARAM_PREFIX }}/rabbitmq/user" \
@@ -229,12 +158,7 @@ jobs:
 
       - name: Create Django Parameters
         run: |
-          echo "Creating Django parameters..."
-          
-          OVERWRITE_FLAG=""
-          if [ "${{ github.event.inputs.overwrite }}" = "true" ]; then
-            OVERWRITE_FLAG="--overwrite"
-          fi
+          OVERWRITE_FLAG="--overwrite"
           
           aws ssm put-parameter \
             --name "${{ env.PARAM_PREFIX }}/django/secret_key" \
@@ -246,26 +170,19 @@ jobs:
           
           aws ssm put-parameter \
             --name "${{ env.PARAM_PREFIX }}/django/debug" \
-            --value "${{ github.event.inputs.django_debug }}" \
+            --value "0" \
             --type "String" \
             --region "${{ env.AWS_REGION }}" \
             $OVERWRITE_FLAG \
             --description "AgroStation Production: Django DEBUG flag"
-          
-          echo "Django parameters created"
 
       - name: Create Django Superuser Parameters
         run: |
-          echo "Creating Django superuser parameters..."
-          
-          OVERWRITE_FLAG=""
-          if [ "${{ github.event.inputs.overwrite }}" = "true" ]; then
-            OVERWRITE_FLAG="--overwrite"
-          fi
+          OVERWRITE_FLAG="--overwrite"
           
           aws ssm put-parameter \
             --name "${{ env.PARAM_PREFIX }}/django/superuser/email" \
-            --value "${{ github.event.inputs.django_superuser_email }}" \
+            --value "guilhermerrdias@gmail.com" \
             --type "String" \
             --region "${{ env.AWS_REGION }}" \
             $OVERWRITE_FLAG \
@@ -291,15 +208,8 @@ jobs:
 
       - name: Verify Parameters
         run: |
-          echo "Verifying created parameters..."
-          
           aws ssm describe-parameters \
             --filters "Key=Name,Values=${{ env.PARAM_PREFIX }}" \
             --region "${{ env.AWS_REGION }}" \
             --query 'Parameters[*].[Name,Type]' \
             --output table
-          
-          echo ""
-          echo "All parameters created successfully!"
-          echo "Prefix: ${{ env.PARAM_PREFIX }}"
-          echo "Region: ${{ env.AWS_REGION }}"
