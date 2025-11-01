@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Sobre - AgroStation{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-info-circle"></i> Sobre o AgroStation</h1>
+    <p>Sistema completo de monitoramento ambiental para aplicações agrícolas</p>
+</div>
+
+<div class="card">
+    <h2><i class="fas fa-project-diagram"></i> Visão Geral</h2>
+    <p>O AgroStation é uma plataforma avançada de monitoramento ambiental desenvolvida especificamente para aplicações agrícolas. Utilizando tecnologias de IoT (Internet das Coisas), o sistema fornece dados em tempo real sobre condições ambientais, qualidade do ar, segurança e parâmetros meteorológicos.</p>
+</div>
+
+<div class="card">
+    <h2><i class="fas fa-microchip"></i> Tecnologias Utilizadas</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
+        <div>
+            <h3><i class="fas fa-server"></i> Backend</h3>
+            <ul style="list-style: none; padding: 0;">
+                <li><i class="fas fa-check-circle" style="color: var(--success-color);"></i> Django Framework</li>
+                <li><i class="fas fa-check-circle" style="color: var(--success-color);"></i> Django Channels (WebSockets)</li>
+                <li><i class="fas fa-check-circle" style="color: var(--success-color);"></i> PostgreSQL</li>
+                <li><i class="fas fa-check-circle" style="color: var(--success-color);"></i> Redis</li>
+            </ul>
+        </div>
+        <div>
+            <h3><i class="fas fa-broadcast-tower"></i> Comunicação</h3>
+            <ul style="list-style: none; padding: 0;">
+                <li><i class="fas fa-check-circle" style="color: var(--success-color);"></i> MQTT Protocol</li>
+                <li><i class="fas fa-check-circle" style="color: var(--success-color);"></i> RabbitMQ Broker</li>
+                <li><i class="fas fa-check-circle" style="color: var(--success-color);"></i> WebSocket Real-time</li>
+            </ul>
+        </div>
+        <div>
+            <h3><i class="fas fa-mobile-alt"></i> Frontend</h3>
+            <ul style="list-style: none; padding: 0;">
+                <li><i class="fas fa-check-circle" style="color: var(--success-color);"></i> HTML5 & CSS3</li>
+                <li><i class="fas fa-check-circle" style="color: var(--success-color);"></i> JavaScript ES6+</li>
+                <li><i class="fas fa-check-circle" style="color: var(--success-color);"></i> Chart.js</li>
+                <li><i class="fas fa-check-circle" style="color: var(--success-color);"></i> Leaflet Maps</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2><i class="fas fa-sensor"></i> Sensores Integrados</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 1rem;">
+        <div style="padding: 1rem; background: #f7fafc; border-radius: 0.5rem;">
+            <h4><i class="fas fa-thermometer-half"></i> Temperatura</h4>
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">DHT22 e BMP280</p>
+        </div>
+        <div style="padding: 1rem; background: #f7fafc; border-radius: 0.5rem;">
+            <h4><i class="fas fa-tint"></i> Umidade</h4>
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">Ar e Solo</p>
+        </div>
+        <div style="padding: 1rem; background: #f7fafc; border-radius: 0.5rem;">
+            <h4><i class="fas fa-sun"></i> Luminosidade</h4>
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">Sensor de luz</p>
+        </div>
+        <div style="padding: 1rem; background: #f7fafc; border-radius: 0.5rem;">
+            <h4><i class="fas fa-wind"></i> Vento</h4>
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">Velocidade e direção</p>
+        </div>
+        <div style="padding: 1rem; background: #f7fafc; border-radius: 0.5rem;">
+            <h4><i class="fas fa-cloud-rain"></i> Chuva</h4>
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">Detecção de precipitação</p>
+        </div>
+        <div style="padding: 1rem; background: #f7fafc; border-radius: 0.5rem;">
+            <h4><i class="fas fa-lungs"></i> Qualidade do Ar</h4>
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">PM1.0, PM2.5, PM10</p>
+        </div>
+        <div style="padding: 1rem; background: #f7fafc; border-radius: 0.5rem;">
+            <h4><i class="fas fa-exclamation-triangle"></i> Gás</h4>
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">MQ-2 (vazamentos)</p>
+        </div>
+        <div style="padding: 1rem; background: #f7fafc; border-radius: 0.5rem;">
+            <h4><i class="fas fa-location-dot"></i> GPS</h4>
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">Localização geográfica</p>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2><i class="fas fa-rocket"></i> Funcionalidades Principais</h2>
+    <ul style="list-style: none; padding: 0; margin-top: 1rem;">
+        <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--border-color);">
+            <i class="fas fa-chart-line" style="color: var(--primary-color); margin-right: 0.5rem;"></i>
+            <strong>Dashboard em Tempo Real:</strong> Visualização instantânea de todos os sensores com atualizações via WebSocket
+        </li>
+        <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--border-color);">
+            <i class="fas fa-chart-bar" style="color: var(--primary-color); margin-right: 0.5rem;"></i>
+            <strong>Análise Histórica:</strong> Estatísticas detalhadas por período (hoje, semana, mês)
+        </li>
+        <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--border-color);">
+            <i class="fas fa-map-marked-alt" style="color: var(--primary-color); margin-right: 0.5rem;"></i>
+            <strong>Geolocalização:</strong> Mapa interativo com localização precisa da estação
+        </li>
+        <li style="padding: 0.75rem 0; border-bottom: 1px solid var(--border-color);">
+            <i class="fas fa-bell" style="color: var(--primary-color); margin-right: 0.5rem;"></i>
+            <strong>Alertas Inteligentes:</strong> Notificações para valores críticos e situações de risco
+        </li>
+        <li style="padding: 0.75rem 0;">
+            <i class="fas fa-mobile-alt" style="color: var(--primary-color); margin-right: 0.5rem;"></i>
+            <strong>Interface Responsiva:</strong> Acessível em qualquer dispositivo (desktop, tablet, mobile)
+        </li>
+    </ul>
+</div>
+
+<div class="card" id="contato">
+    <h2><i class="fas fa-envelope"></i> Contato</h2>
+    <p>Para mais informações, sugestões ou suporte técnico, entre em contato através dos canais disponíveis.</p>
+    <div style="margin-top: 1rem;">
+        <p><i class="fas fa-envelope" style="color: var(--primary-color); margin-right: 0.5rem;"></i> <strong>Email:</strong> suporte@agrostation.com</p>
+        <p><i class="fas fa-book" style="color: var(--primary-color); margin-right: 0.5rem;"></i> <strong>Documentação:</strong> <a href="{% url 'ajuda' %}">Guia de Ajuda</a></p>
+    </div>
+</div>
+{% endblock %}
+

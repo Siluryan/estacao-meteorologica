@@ -100,14 +100,14 @@ void taskAtualizaLocalizacao(void * parameter) {
       double lng = ultimaLng;
 
       if (lat != 0 && lng != 0) {
-        Serial.println("🔄 Atualizando localização via HTTP não bloqueante...");
+        Serial.println("Atualizando localização via HTTP não bloqueante...");
 
         WiFiClient client;
         const char* host = "nominatim.openstreetmap.org";
         String url = "/reverse?format=jsonv2&lat=" + String(lat, 6) + "&lon=" + String(lng, 6);
 
         if (!client.connect(host, 80)) {
-          Serial.println("❌ Falha ao conectar ao host de reverse geocoding");
+          Serial.println("Falha ao conectar ao host de reverse geocoding");
           vTaskDelay(pdMS_TO_TICKS(1000));
           continue;
         }
@@ -120,7 +120,7 @@ void taskAtualizaLocalizacao(void * parameter) {
         unsigned long timeout = millis() + 3000;
         while (client.available() == 0) {
           if (millis() > timeout) {
-            Serial.println("❌ Timeout esperando resposta do host");
+            Serial.println("Timeout esperando resposta do host");
             client.stop();
             break;
           }
@@ -151,12 +151,12 @@ void taskAtualizaLocalizacao(void * parameter) {
               if (country[0] != '\0') result += String(country);
 
               ultimaLocalizacao = removeAcentos(result);
-              Serial.println("🌍 Localização atualizada: " + ultimaLocalizacao);
+              Serial.println("Localização atualizada: " + ultimaLocalizacao);
             } else {
-              Serial.println("❌ Erro ao decodificar JSON na task de localização.");
+              Serial.println("Erro ao decodificar JSON na task de localização.");
             }
           } else {
-            Serial.println("❌ Não encontrou corpo JSON na resposta de reverse geocoding.");
+            Serial.println("Não encontrou corpo JSON na resposta de reverse geocoding.");
           }
         }
       }
@@ -283,9 +283,9 @@ void setup() {
   // I2C para BMP280 (escolhi pinos SDA=19, SCL=23 conforme seu código)
   Wire.begin(19, 23);
   if (!bmp.begin(0x76)) {
-    Serial.println("❌ Erro ao inicializar BMP280! Verifique conexões e endereço (0x76 ou 0x77).");
+    Serial.println("Erro ao inicializar BMP280! Verifique conexões e endereço (0x76 ou 0x77).");
   } else {
-    Serial.println("✅ BMP280 inicializado com sucesso!");
+    Serial.println("BMP280 inicializado com sucesso!");
   }
 
   // WiFi + MQTT
