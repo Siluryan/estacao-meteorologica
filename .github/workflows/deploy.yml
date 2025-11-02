@@ -78,6 +78,50 @@ jobs:
           ecr_repository: ${{ env.ECR_REPOSITORY }}
           aws_region: ${{ env.AWS_REGION }}
 
+      - name: Copy Deploy Files
+        uses: ./.github/actions/copy-deploy-files
+        with:
+          instance_id: ${{ secrets.AGROSTATION_EC2_INSTANCE_ID }}
+          project_path: ~/estacao-meteorologica
+
+      - name: Ensure .env exists
+        uses: ./.github/actions/setup-env-from-params
+        with:
+          instance_id: ${{ secrets.AGROSTATION_EC2_INSTANCE_ID }}
+          project_path: ~/estacao-meteorologica
+          aws_region: ${{ env.AWS_REGION }}
+          parameter_prefix: '/agrostation/prod'
+        continue-on-error: true
+
+      - name: Upload docker-compose.yaml
+        uses: ./.github/actions/upload-file
+        with:
+          instance_id: ${{ secrets.AGROSTATION_EC2_INSTANCE_ID }}
+          file_path: docker-compose.yaml
+          target_path: /home/ec2-user/estacao-meteorologica/docker-compose.yaml
+          target_dir: /home/ec2-user/estacao-meteorologica
+          aws_region: ${{ env.AWS_REGION }}
+
+      - name: Upload rabbitmq config files
+        uses: ./.github/actions/upload-file
+        with:
+          instance_id: ${{ secrets.AGROSTATION_EC2_INSTANCE_ID }}
+          file_path: rabbitmq/rabbitmq.conf
+          target_path: /home/ec2-user/estacao-meteorologica/rabbitmq/rabbitmq.conf
+          target_dir: /home/ec2-user/estacao-meteorologica/rabbitmq
+          aws_region: ${{ env.AWS_REGION }}
+        continue-on-error: true
+
+      - name: Upload rabbitmq script
+        uses: ./.github/actions/upload-file
+        with:
+          instance_id: ${{ secrets.AGROSTATION_EC2_INSTANCE_ID }}
+          file_path: rabbitmq/rabbitmq.sh
+          target_path: /home/ec2-user/estacao-meteorologica/rabbitmq/rabbitmq.sh
+          target_dir: /home/ec2-user/estacao-meteorologica/rabbitmq
+          aws_region: ${{ env.AWS_REGION }}
+        continue-on-error: true
+
       - name: Deploy Services
         uses: ./.github/actions/deploy-services
         with:

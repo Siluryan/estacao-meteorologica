@@ -1,0 +1,116 @@
+name: 'Upload File'
+description: 'Faz upload de um arquivo para a EC2 via SSM usando base64'
+
+inputs:
+  instance_id:
+    description: 'Instance ID da EC2'
+    required: true
+  file_path:
+    description: 'Caminho local do arquivo para upload'
+    required: true
+  target_path:
+    description: 'Caminho de destino na EC2'
+    required: true
+  target_dir:
+    description: 'Diretório de destino (criado se não existir)'
+    required: false
+  aws_region:
+    description: 'Região AWS'
+    required: false
+    default: 'us-east-1'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Upload file via SSM
+      shell: bash
+      env:
+        AWS_REGION: ${{ inputs.aws_region }}
+      run: |
+        set -e
+        
+        if [ ! -f "${{ inputs.file_path }}" ]; then
+          echo "Aviso: Arquivo ${{ inputs.file_path }} não encontrado, pulando..."
+          exit 0
+        fi
+        
+        FILE_CONTENT=$(base64 -w 0 < "${{ inputs.file_path }}" 2>/dev/null || base64 < "${{ inputs.file_path }}")
+        TARGET_DIR="${{ inputs.target_dir }}"
+        TARGET_PATH="${{ inputs.target_path }}"
+        
+        if [ -z "$TARGET_DIR" ]; then
+          TARGET_DIR=$(dirname "$TARGET_PATH")
+        fi
+        
+        COMMAND="mkdir -p '$TARGET_DIR' && echo '$FILE_CONTENT' | base64 -d > '$TARGET_PATH' && chmod 644 '$TARGET_PATH' && echo '✓ Arquivo copiado: $TARGET_PATH' && ls -lh '$TARGET_PATH'"
+        
+        ESCAPED_CMD=$(printf '%s' "$COMMAND" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+        
+        echo "Enviando arquivo ${{ inputs.file_path }} para $TARGET_PATH na EC2..."
+        
+        COMMAND_ID=$(aws ssm send-command \
+          --instance-ids "${{ inputs.instance_id }}" \
+          --document-name "AWS-RunShellScript" \
+          --parameters "commands=[\"$ESCAPED_CMD\"]" \
+          --region "${{ inputs.aws_region }}" \
+          --query 'Command.CommandId' \
+          --output text) || exit 1
+        
+        if [ -z "$COMMAND_ID" ] || [ "$COMMAND_ID" = "None" ]; then
+          echo "Erro: Falha ao obter Command ID"
+          exit 1
+        fi
+        
+        echo "Command ID: $COMMAND_ID"
+        echo "Aguardando execução..."
+        
+        sleep 5
+        
+        for i in {1..24}; do
+          STATUS=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ inputs.instance_id }}" \
+            --region "${{ inputs.aws_region }}" \
+            --query 'Status' \
+            --output text 2>/dev/null || echo "InProgress")
+          
+          if [ "$STATUS" = "Success" ]; then
+            OUTPUT=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "${{ inputs.instance_id }}" \
+              --region "${{ inputs.aws_region }}" \
+              --query 'StandardOutputContent' \
+              --output text 2>/dev/null || echo "")
+            ERROR=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "${{ inputs.instance_id }}" \
+              --region "${{ inputs.aws_region }}" \
+              --query 'StandardErrorContent' \
+              --output text 2>/dev/null || echo "")
+            if [ -n "$OUTPUT" ]; then
+              echo "$OUTPUT"
+            fi
+            if [ -n "$ERROR" ]; then
+              echo "Avisos: $ERROR" >&2
+            fi
+            exit 0
+          elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ] || [ "$STATUS" = "TimedOut" ]; then
+            ERROR=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "${{ inputs.instance_id }}" \
+              --region "${{ inputs.aws_region }}" \
+              --query 'StandardErrorContent' \
+              --output text 2>/dev/null || echo "")
+            echo "Erro: Status=$STATUS"
+            if [ -n "$ERROR" ]; then
+              echo "$ERROR"
+            fi
+            exit 1
+          fi
+          
+          sleep 5
+        done
+        
+        echo "Timeout aguardando execução do comando"
+        exit 1
+
