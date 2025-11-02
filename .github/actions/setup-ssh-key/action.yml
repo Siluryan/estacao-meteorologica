@@ -18,14 +18,28 @@ runs:
         instance_id: ${{ inputs.instance_id }}
         command: |
           set -e
-          
-          echo "=== Setup SSH Key ==="
-          
+                   
           if [ -z "${{ inputs.ssh_key }}" ]; then
             echo "Nenhuma chave SSH fornecida. Pulando configuração."
             echo "Nota: Para repositórios privados, forneça uma chave SSH."
             exit 0
           fi
+          
+          USER=$(whoami)
+          
+          if [ -z "$HOME" ]; then
+            if [ "$USER" = "root" ]; then
+              HOME="/root"
+            elif [ -d "/home/$USER" ]; then
+              HOME="/home/$USER"
+            else
+              HOME="/home/ec2-user"
+            fi
+            export HOME
+          fi
+          
+          echo "Usuário: $USER"
+          echo "HOME: $HOME"
           
           SSH_DIR="$HOME/.ssh"
           SSH_KEY_FILE="$SSH_DIR/agrostationec2"
@@ -37,6 +51,18 @@ runs:
           
           echo "${{ inputs.ssh_key }}" > "$SSH_KEY_FILE"
           chmod 600 "$SSH_KEY_FILE"
+          
+          if [ "$USER" = "root" ] && [ -d "/home/ec2-user" ]; then
+            echo "Também configurando chave SSH para ec2-user..."
+            EC2_USER_SSH_DIR="/home/ec2-user/.ssh"
+            EC2_USER_KEY_FILE="$EC2_USER_SSH_DIR/agrostationec2"
+            mkdir -p "$EC2_USER_SSH_DIR"
+            chmod 700 "$EC2_USER_SSH_DIR"
+            cp "$SSH_KEY_FILE" "$EC2_USER_KEY_FILE"
+            chown ec2-user:ec2-user "$EC2_USER_KEY_FILE" 2>/dev/null || true
+            chmod 600 "$EC2_USER_KEY_FILE"
+            echo "Chave SSH também configurada em: $EC2_USER_KEY_FILE"
+          fi
           
           echo "Adicionando GitHub às known_hosts..."
           ssh-keyscan -t rsa,ed25519 github.com >> "$SSH_DIR/known_hosts" 2>/dev/null || true
@@ -52,6 +78,25 @@ runs:
             echo "  AddKeysToAgent yes"
           } > "$SSH_DIR/config"
           chmod 600 "$SSH_DIR/config"
+          
+          if [ "$USER" = "root" ] && [ -d "/home/ec2-user" ]; then
+            echo "Configurando SSH para ec2-user também..."
+            EC2_USER_SSH_DIR="/home/ec2-user/.ssh"
+            ssh-keyscan -t rsa,ed25519 github.com >> "$EC2_USER_SSH_DIR/known_hosts" 2>/dev/null || true
+            chown ec2-user:ec2-user "$EC2_USER_SSH_DIR/known_hosts" 2>/dev/null || true
+            chmod 644 "$EC2_USER_SSH_DIR/known_hosts"
+            
+            {
+              echo "Host github.com"
+              echo "  User git"
+              echo "  IdentityFile ~/.ssh/agrostationec2"
+              echo "  StrictHostKeyChecking accept-new"
+              echo "  IdentitiesOnly yes"
+              echo "  AddKeysToAgent yes"
+            } > "$EC2_USER_SSH_DIR/config"
+            chown ec2-user:ec2-user "$EC2_USER_SSH_DIR/config" 2>/dev/null || true
+            chmod 600 "$EC2_USER_SSH_DIR/config"
+          fi
           
           echo "Configurando ssh-agent para iniciar automaticamente..."
           
