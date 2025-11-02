@@ -76,8 +76,8 @@ runs:
             exit 1
           fi
           
-          docker-compose pull ${{ inputs.services }}
-          docker-compose up -d --no-deps ${{ inputs.services }}
+          docker-compose pull
+          docker-compose up -d
           docker-compose ps
 
 

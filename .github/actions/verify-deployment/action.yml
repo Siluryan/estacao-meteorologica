@@ -26,11 +26,43 @@ runs:
       with:
         instance_id: ${{ inputs.instance_id }}
         command: |
-          cd ${{ inputs.project_path }} || cd ~/estacao-meteorologica || cd /home/ec2-user/estacao-meteorologica || cd /opt/estacao-meteorologica
+          set -e
           
+          INPUT_PATH="${{ inputs.project_path }}"
+          EXPANDED_PATH=$(echo "$INPUT_PATH" | sed "s|^~|$HOME|")
+          
+          if [ -d "/home/ec2-user/estacao-meteorologica" ]; then
+            PROJECT_DIR="/home/ec2-user/estacao-meteorologica"
+          elif [ -d "/home/ubuntu/estacao-meteorologica" ]; then
+            PROJECT_DIR="/home/ubuntu/estacao-meteorologica"
+          elif [ -d "$EXPANDED_PATH" ]; then
+            PROJECT_DIR="$EXPANDED_PATH"
+          elif [ -d "$HOME/estacao-meteorologica" ]; then
+            PROJECT_DIR="$HOME/estacao-meteorologica"
+          elif [ -d "/opt/estacao-meteorologica" ]; then
+            PROJECT_DIR="/opt/estacao-meteorologica"
+          else
+            echo "Erro: Diretório do projeto não encontrado"
+            exit 1
+          fi
+          
+          cd "$PROJECT_DIR" || exit 1
+          echo "Verificando deployment em: $(pwd)"
+          
+          if [ ! -f "docker-compose.yaml" ] && [ ! -f "docker-compose.yml" ]; then
+            echo "Erro: Arquivo docker-compose.yaml não encontrado em $(pwd)"
+            ls -la
+            exit 1
+          fi
+          
+          echo "Status dos containers:"
           docker-compose ps
           
+          echo ""
+          echo "Logs dos serviços:"
           for service in ${{ inputs.services }}; do
+            echo ""
+            echo "=== Logs de $service ==="
             docker-compose logs --tail=${{ inputs.log_lines }} $service || true
           done
 
