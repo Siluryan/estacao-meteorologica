@@ -22,9 +22,62 @@ runs:
       with:
         instance_id: ${{ inputs.instance_id }}
         command: |
-          cd ${{ inputs.project_path }} || cd ~/estacao-meteorologica || cd /home/ec2-user/estacao-meteorologica || cd /opt/estacao-meteorologica
+          set -e
           
-          docker-compose pull ${{ inputs.services }}
-          docker-compose up -d --no-deps ${{ inputs.services }}
+          INPUT_PATH="${{ inputs.project_path }}"
+          
+          echo "Caminho fornecido: $INPUT_PATH"
+          echo "HOME: $HOME"
+          echo "Usuário: $(whoami)"
+          
+          EXPANDED_PATH=$(echo "$INPUT_PATH" | sed "s|^~|$HOME|")
+          
+          echo "Caminho expandido: $EXPANDED_PATH"
+          
+          PROJECT_DIR=""
+          
+          if [ -d "/home/ec2-user/estacao-meteorologica" ]; then
+            PROJECT_DIR="/home/ec2-user/estacao-meteorologica"
+            echo "Diretório encontrado em /home/ec2-user: $PROJECT_DIR"
+          elif [ -d "/home/ubuntu/estacao-meteorologica" ]; then
+            PROJECT_DIR="/home/ubuntu/estacao-meteorologica"
+            echo "Diretório encontrado em /home/ubuntu: $PROJECT_DIR"
+          elif [ -d "$EXPANDED_PATH" ]; then
+            PROJECT_DIR="$EXPANDED_PATH"
+            echo "Diretório encontrado via caminho expandido: $PROJECT_DIR"
+          elif [ -d "$HOME/estacao-meteorologica" ]; then
+            PROJECT_DIR="$HOME/estacao-meteorologica"
+            echo "Diretório encontrado em HOME: $PROJECT_DIR"
+          elif [ -d "/opt/estacao-meteorologica" ]; then
+            PROJECT_DIR="/opt/estacao-meteorologica"
+            echo "Diretório encontrado em /opt: $PROJECT_DIR"
+          else
+            echo "Erro: Diretório do projeto não encontrado"
+            echo "Verificados:"
+            echo "  - $EXPANDED_PATH"
+            echo "  - $HOME/estacao-meteorologica"
+            echo "  - /home/ec2-user/estacao-meteorologica"
+            echo "  - /opt/estacao-meteorologica"
+            echo ""
+            echo "Conteúdo de $HOME:"
+            ls -la "$HOME" 2>/dev/null | head -10 || echo "Não foi possível listar $HOME"
+            echo ""
+            echo "Conteúdo de /home:"
+            ls -la /home 2>/dev/null | head -10 || true
+            exit 1
+          fi
+          
+          cd "$PROJECT_DIR" || exit 1
+          echo "Trabalhando no diretório: $(pwd)"
+          
+          if [ ! -f "docker-compose.yaml" ] && [ ! -f "docker-compose.yml" ]; then
+            echo "Erro: Arquivo docker-compose.yaml ou docker-compose.yml não encontrado em $(pwd)"
+            ls -la
+            exit 1
+          fi
+          
+          docker-compose pull
+          docker-compose up -d
           docker-compose ps
+
 

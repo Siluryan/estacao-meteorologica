@@ -22,20 +22,45 @@ runs:
       with:
         instance_id: ${{ inputs.instance_id }}
         command: |
+          set -e
+          
           PROJECT_PATH="${{ inputs.project_path }}"
           USER="${{ inputs.user }}"
           
-          cd $PROJECT_PATH || cd ~/estacao-meteorologica || cd /home/ec2-user/estacao-meteorologica || cd /opt/estacao-meteorologica
+          EXPANDED_PATH=$(echo "$PROJECT_PATH" | sed "s|^~|$HOME|")
           
-          PROJECT_ABS_PATH=$(pwd)
-          COMPOSE_CMD=$(command -v docker-compose || command -v docker || echo "docker-compose")
-          
-          if command -v docker-compose &> /dev/null; then
-            COMPOSE_CMD=$(command -v docker-compose)
-          elif docker compose version &> /dev/null; then
-            COMPOSE_CMD="docker compose"
+          if [ -d "/home/ec2-user/estacao-meteorologica" ]; then
+            PROJECT_DIR="/home/ec2-user/estacao-meteorologica"
+          elif [ -d "/home/ubuntu/estacao-meteorologica" ]; then
+            PROJECT_DIR="/home/ubuntu/estacao-meteorologica"
+          elif [ -d "$EXPANDED_PATH" ]; then
+            PROJECT_DIR="$EXPANDED_PATH"
+          elif [ -d "$HOME/estacao-meteorologica" ]; then
+            PROJECT_DIR="$HOME/estacao-meteorologica"
+          elif [ -d "/opt/estacao-meteorologica" ]; then
+            PROJECT_DIR="/opt/estacao-meteorologica"
           else
+            echo "Erro: Diretório do projeto não encontrado"
+            exit 1
+          fi
+          
+          PROJECT_ABS_PATH="$PROJECT_DIR"
+          
+          COMPOSE_CMD=$(command -v docker-compose 2>/dev/null || echo "")
+          if [ -z "$COMPOSE_CMD" ] && docker compose version &> /dev/null; then
+            COMPOSE_CMD="docker compose"
+          elif [ -z "$COMPOSE_CMD" ]; then
             COMPOSE_CMD="docker-compose"
+          fi
+          
+          echo "Diretório do projeto: $PROJECT_ABS_PATH"
+          echo "Comando docker-compose: $COMPOSE_CMD"
+          
+          cd "$PROJECT_ABS_PATH" || exit 1
+          
+          if [ ! -f "docker-compose.yaml" ] && [ ! -f "docker-compose.yml" ]; then
+            echo "Erro: docker-compose.yaml não encontrado em $PROJECT_ABS_PATH"
+            exit 1
           fi
           
           SERVICE_FILE=$(mktemp)
@@ -49,18 +74,25 @@ runs:
           printf '[Service]\n' >> "$SERVICE_FILE"
           printf 'Type=oneshot\n' >> "$SERVICE_FILE"
           printf 'RemainAfterExit=yes\n' >> "$SERVICE_FILE"
+          DOCKER_BIN=$(command -v docker)
+          DOCKER_PATH=$(dirname "$DOCKER_BIN")
+          
           printf "User=$USER\n" >> "$SERVICE_FILE"
           printf "Group=$USER\n" >> "$SERVICE_FILE"
           printf "WorkingDirectory=$PROJECT_ABS_PATH\n" >> "$SERVICE_FILE"
-          printf 'Environment="PATH=/usr/local/bin:/usr/bin:/bin"\n' >> "$SERVICE_FILE"
+          printf "Environment=\"PATH=$DOCKER_PATH:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin\"\n" >> "$SERVICE_FILE"
           printf '\n' >> "$SERVICE_FILE"
           
+          COMPOSE_FILE="$PROJECT_ABS_PATH/docker-compose.yaml"
+          [ ! -f "$COMPOSE_FILE" ] && COMPOSE_FILE="$PROJECT_ABS_PATH/docker-compose.yml"
+          
           if [ "$COMPOSE_CMD" = "docker compose" ]; then
-            printf 'ExecStart=/usr/bin/docker compose up -d\n' >> "$SERVICE_FILE"
-            printf 'ExecStop=/usr/bin/docker compose down\n' >> "$SERVICE_FILE"
+            printf "ExecStart=$DOCKER_BIN compose -f $COMPOSE_FILE up -d\n" >> "$SERVICE_FILE"
+            printf "ExecStop=$DOCKER_BIN compose -f $COMPOSE_FILE down\n" >> "$SERVICE_FILE"
           else
-            printf "ExecStart=$COMPOSE_CMD up -d\n" >> "$SERVICE_FILE"
-            printf "ExecStop=$COMPOSE_CMD down\n" >> "$SERVICE_FILE"
+            COMPOSE_BIN=$(which docker-compose 2>/dev/null || echo "/usr/local/bin/docker-compose")
+            printf "ExecStart=$COMPOSE_BIN -f $COMPOSE_FILE up -d\n" >> "$SERVICE_FILE"
+            printf "ExecStop=$COMPOSE_BIN -f $COMPOSE_FILE down\n" >> "$SERVICE_FILE"
           fi
           
           printf '\n' >> "$SERVICE_FILE"
@@ -73,8 +105,29 @@ runs:
           printf '[Install]\n' >> "$SERVICE_FILE"
           printf 'WantedBy=multi-user.target\n' >> "$SERVICE_FILE"
           
+          echo "Conteúdo do arquivo de serviço:"
+          cat "$SERVICE_FILE"
+          
           sudo cp "$SERVICE_FILE" /etc/systemd/system/docker-compose-app.service
           rm -f "$SERVICE_FILE"
           
+          echo "Verificando se usuário $USER está no grupo docker..."
+          if groups "$USER" | grep -q docker; then
+            echo "✓ Usuário $USER está no grupo docker"
+          else
+            echo "Aviso: Usuário $USER não está no grupo docker"
+            echo "Adicionando ao grupo docker..."
+            sudo usermod -aG docker "$USER" || echo "Não foi possível adicionar ao grupo (pode precisar de logout/login)"
+          fi
+          
           sudo systemctl daemon-reload
           sudo systemctl enable docker-compose-app.service
+          
+          echo "Serviço configurado. Testando se funciona..."
+          sudo systemctl start docker-compose-app.service || {
+            echo "Erro ao iniciar serviço. Verificando logs..."
+            sudo journalctl -u docker-compose-app.service -n 20 --no-pager || true
+          }
+          
+          sleep 2
+          sudo systemctl status docker-compose-app.service --no-pager || true

@@ -25,17 +25,157 @@ runs:
       with:
         instance_id: ${{ inputs.instance_id }}
         command: |
+          set -e
+          
+          echo "=== Setup Repository ==="
+          
+          if ! command -v git &> /dev/null; then
+            echo "Git não está instalado. Instalando..."
+            if command -v yum &> /dev/null; then
+              sudo yum install -y git
+            elif command -v apt-get &> /dev/null; then
+              sudo apt-get update && sudo apt-get install -y git
+            else
+              echo "Erro: Não foi possível instalar git. Sistema não suportado."
+              exit 1
+            fi
+          fi
+          
+          USER=$(whoami)
+          
+          if [ -z "$HOME" ]; then
+            if [ "$USER" = "root" ]; then
+              HOME="/root"
+            elif [ -d "/home/$USER" ]; then
+              HOME="/home/$USER"
+            else
+              HOME="/home/ec2-user"
+            fi
+            export HOME
+          fi
+          
           PROJECT_PATH="${{ inputs.project_path }}"
+          EXPANDED_PATH=$(echo "$PROJECT_PATH" | sed "s|^~|$HOME|")
+          
+          if [ -d "/home/ec2-user/estacao-meteorologica" ]; then
+            PROJECT_PATH="/home/ec2-user/estacao-meteorologica"
+          elif [ -d "/home/ubuntu/estacao-meteorologica" ]; then
+            PROJECT_PATH="/home/ubuntu/estacao-meteorologica"
+          elif [ -d "$EXPANDED_PATH" ]; then
+            PROJECT_PATH="$EXPANDED_PATH"
+          else
+            PROJECT_PATH="$EXPANDED_PATH"
+          fi
+          
           REPO_URL="${{ inputs.repository_url }}"
           BRANCH="${{ inputs.branch }}"
           
-          mkdir -p $PROJECT_PATH
-          cd $PROJECT_PATH
+          SSH_KEY_FILE=""
+          for key_path in "$HOME/.ssh/agrostationec2" "/home/ec2-user/.ssh/agrostationec2" "/root/.ssh/agrostationec2"; do
+            if [ -f "$key_path" ]; then
+              SSH_KEY_FILE="$key_path"
+              break
+            fi
+          done
+          
+          if [ -n "$SSH_KEY_FILE" ]; then
+            echo "Chave SSH encontrada em: $SSH_KEY_FILE"
+            echo "Convertendo URL para SSH se necessário..."
+            if [[ "$REPO_URL" == https://github.com/* ]]; then
+              REPO_URL="${REPO_URL#https://github.com/}"
+              REPO_URL="git@github.com:${REPO_URL}"
+              echo "URL convertida para SSH: $REPO_URL"
+            fi
+          fi
+          
+          echo "Repositório: $REPO_URL"
+          echo "Branch: $BRANCH"
+          echo "Diretório destino: $PROJECT_PATH"
+          echo "Usuário atual: $USER"
+          echo "HOME: $HOME"
+          echo "Chave SSH configurada: $([ -n "$SSH_KEY_FILE" ] && echo "Sim ($SSH_KEY_FILE)" || echo 'Não')"
+          
+          mkdir -p "$PROJECT_PATH"
+          cd "$PROJECT_PATH"
+          
+          if [ -n "$SSH_KEY_FILE" ] && [ -f "$SSH_KEY_FILE" ]; then
+            echo "Iniciando ssh-agent e adicionando chave SSH..."
+            eval "$(ssh-agent -s)" > /dev/null 2>&1
+            export SSH_AUTH_SOCK
+            export SSH_AGENT_PID
+            ssh-add "$SSH_KEY_FILE" 2>/dev/null || {
+              echo "Aviso: Não foi possível adicionar chave ao ssh-agent"
+              echo "Verificando permissões da chave..."
+              ls -lh "$SSH_KEY_FILE" || true
+            }
+            echo "Chave SSH adicionada ao ssh-agent"
+            
+            echo "Testando conexão SSH com GitHub..."
+            ssh -T git@github.com -o StrictHostKeyChecking=accept-new 2>&1 | head -3 || {
+              echo "Aviso: Teste SSH falhou, mas tentando clonar mesmo assim..."
+            }
+          fi
           
           if [ -d .git ]; then
-            git fetch origin
-            git checkout $BRANCH
-            git pull origin $BRANCH
+            echo "Repositório já existe, atualizando..."
+            git fetch origin || {
+              echo "Erro ao fazer fetch. Tentando clonar novamente..."
+              cd ..
+              rm -rf "$PROJECT_PATH"
+              mkdir -p "$PROJECT_PATH"
+              cd "$PROJECT_PATH"
+              git clone -b "$BRANCH" "$REPO_URL" . || {
+                echo "Erro ao clonar repositório"
+                exit 1
+              }
+            }
+            
+            git checkout "$BRANCH" || {
+              echo "Erro ao fazer checkout da branch $BRANCH"
+              exit 1
+            }
+            
+            git pull origin "$BRANCH" || {
+              echo "Aviso: Erro ao fazer pull, mas continuando..."
+            }
           else
-            git clone -b $BRANCH $REPO_URL .
+            echo "Clonando repositório pela primeira vez..."
+            git clone -b "$BRANCH" "$REPO_URL" . || {
+              echo "Erro ao clonar repositório: $REPO_URL"
+              echo "Verifique se:"
+              echo "  1. O repositório existe e está acessível"
+              echo "  2. Se for privado, configure autenticação Git"
+              exit 1
+            }
           fi
+          
+          echo ""
+          echo "=== Verificação do repositório ==="
+          echo "Diretório atual: $(pwd)"
+          echo "Branch atual: $(git branch --show-current)"
+          echo "Último commit: $(git log -1 --oneline)"
+          echo ""
+          echo "Conteúdo do diretório:"
+          ls -la
+          echo ""
+          
+          if [ ! -f "docker-compose.yaml" ] && [ ! -f "docker-compose.yml" ]; then
+            echo "AVISO: Arquivo docker-compose.yaml não encontrado após clonar repositório!"
+            echo "Arquivos encontrados:"
+            find . -maxdepth 2 -type f -name "*.yaml" -o -name "*.yml" | head -20
+            exit 1
+          else
+            echo "✓ Arquivo docker-compose encontrado"
+            ls -lh docker-compose.* 2>/dev/null || ls -lh docker-compose.yaml docker-compose.yml 2>/dev/null || true
+          fi
+          
+          if [ "$USER" = "root" ] && [ -d "/home/ec2-user/estacao-meteorologica" ]; then
+            echo "Corrigindo permissões dos arquivos para ec2-user..."
+            chown -R ec2-user:ec2-user "$PROJECT_PATH" 2>/dev/null || {
+              echo "Aviso: Não foi possível alterar proprietário, mas continuando..."
+            }
+            echo "Permissões corrigidas"
+          fi
+          
+          echo ""
+          echo "=== Repository setup concluído com sucesso ==="
