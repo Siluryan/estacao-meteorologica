@@ -70,6 +70,17 @@ runs:
           mkdir -p "$PROJECT_PATH"
           cd "$PROJECT_PATH"
           
+          if [ -f "$SSH_KEY_FILE" ]; then
+            echo "Iniciando ssh-agent e adicionando chave SSH..."
+            eval "$(ssh-agent -s)" > /dev/null 2>&1
+            export SSH_AUTH_SOCK
+            export SSH_AGENT_PID
+            ssh-add "$SSH_KEY_FILE" 2>/dev/null || {
+              echo "Aviso: Não foi possível adicionar chave ao ssh-agent, mas continuando..."
+            }
+            echo "Chave SSH adicionada ao ssh-agent"
+          fi
+          
           if [ -d .git ]; then
             echo "Repositório já existe, atualizando..."
             git fetch origin || {

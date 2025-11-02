@@ -49,8 +49,41 @@ runs:
             echo "  IdentityFile ~/.ssh/agrostationec2"
             echo "  StrictHostKeyChecking accept-new"
             echo "  IdentitiesOnly yes"
+            echo "  AddKeysToAgent yes"
           } > "$SSH_DIR/config"
           chmod 600 "$SSH_DIR/config"
+          
+          echo "Configurando ssh-agent para iniciar automaticamente..."
+          
+          if [ -f "$HOME/.bashrc" ]; then
+            if ! grep -q "SSH_AUTH_SOCK" "$HOME/.bashrc"; then
+              {
+                echo ""
+                echo "# Configuração automática do ssh-agent"
+                echo "if [ -z \"\$SSH_AUTH_SOCK\" ]; then"
+                echo "  eval \"\$(ssh-agent -s)\" > /dev/null"
+                echo "  ssh-add ~/.ssh/agrostationec2 2>/dev/null"
+                echo "fi"
+              } >> "$HOME/.bashrc"
+            fi
+          fi
+          
+          if [ -f "$HOME/.bash_profile" ]; then
+            if ! grep -q "SSH_AUTH_SOCK" "$HOME/.bash_profile"; then
+              {
+                echo ""
+                echo "# Configuração automática do ssh-agent"
+                echo "if [ -z \"\$SSH_AUTH_SOCK\" ]; then"
+                echo "  eval \"\$(ssh-agent -s)\" > /dev/null"
+                echo "  ssh-add ~/.ssh/agrostationec2 2>/dev/null"
+                echo "fi"
+              } >> "$HOME/.bash_profile"
+            fi
+          fi
+          
+          echo "Iniciando ssh-agent e adicionando chave..."
+          eval "$(ssh-agent -s)" > /dev/null 2>&1 || true
+          ssh-add "$SSH_KEY_FILE" 2>/dev/null || true
           
           echo "Testando conexão SSH com GitHub..."
           ssh -T git@github.com -o StrictHostKeyChecking=accept-new 2>&1 | head -5 || {
