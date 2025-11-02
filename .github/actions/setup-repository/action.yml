@@ -27,6 +27,20 @@ runs:
         command: |
           set -e
           
+          echo "=== Setup Repository ==="
+          
+          if ! command -v git &> /dev/null; then
+            echo "Git não está instalado. Instalando..."
+            if command -v yum &> /dev/null; then
+              sudo yum install -y git
+            elif command -v apt-get &> /dev/null; then
+              sudo apt-get update && sudo apt-get install -y git
+            else
+              echo "Erro: Não foi possível instalar git. Sistema não suportado."
+              exit 1
+            fi
+          fi
+          
           PROJECT_PATH="${{ inputs.project_path }}"
           if [ "${PROJECT_PATH#~}" != "$PROJECT_PATH" ]; then
             PROJECT_PATH="${PROJECT_PATH/#\~/$HOME}"
@@ -35,20 +49,67 @@ runs:
           REPO_URL="${{ inputs.repository_url }}"
           BRANCH="${{ inputs.branch }}"
           
-          echo "Clonando repositório em: $PROJECT_PATH"
+          echo "Repositório: $REPO_URL"
+          echo "Branch: $BRANCH"
+          echo "Diretório destino: $PROJECT_PATH"
+          echo "Usuário atual: $(whoami)"
+          echo "HOME: $HOME"
+          
           mkdir -p "$PROJECT_PATH"
           cd "$PROJECT_PATH"
           
           if [ -d .git ]; then
             echo "Repositório já existe, atualizando..."
-            git fetch origin
-            git checkout $BRANCH
-            git pull origin $BRANCH
+            git fetch origin || {
+              echo "Erro ao fazer fetch. Tentando clonar novamente..."
+              cd ..
+              rm -rf "$PROJECT_PATH"
+              mkdir -p "$PROJECT_PATH"
+              cd "$PROJECT_PATH"
+              git clone -b "$BRANCH" "$REPO_URL" . || {
+                echo "Erro ao clonar repositório"
+                exit 1
+              }
+            }
+            
+            git checkout "$BRANCH" || {
+              echo "Erro ao fazer checkout da branch $BRANCH"
+              exit 1
+            }
+            
+            git pull origin "$BRANCH" || {
+              echo "Aviso: Erro ao fazer pull, mas continuando..."
+            }
           else
-            echo "Clonando repositório..."
-            git clone -b $BRANCH $REPO_URL .
+            echo "Clonando repositório pela primeira vez..."
+            git clone -b "$BRANCH" "$REPO_URL" . || {
+              echo "Erro ao clonar repositório: $REPO_URL"
+              echo "Verifique se:"
+              echo "  1. O repositório existe e está acessível"
+              echo "  2. Se for privado, configure autenticação Git"
+              exit 1
+            }
           fi
           
-          echo "Verificando conteúdo do diretório:"
-          ls -la
+          echo ""
+          echo "=== Verificação do repositório ==="
           echo "Diretório atual: $(pwd)"
+          echo "Branch atual: $(git branch --show-current)"
+          echo "Último commit: $(git log -1 --oneline)"
+          echo ""
+          echo "Conteúdo do diretório:"
+          ls -la
+          echo ""
+          
+          if [ ! -f "docker-compose.yaml" ] && [ ! -f "docker-compose.yml" ]; then
+            echo "AVISO: Arquivo docker-compose.yaml não encontrado após clonar repositório!"
+            echo "Arquivos encontrados:"
+            find . -maxdepth 2 -type f -name "*.yaml" -o -name "*.yml" | head -20
+            exit 1
+          else
+            echo "✓ Arquivo docker-compose encontrado"
+            ls -lh docker-compose.* 2>/dev/null || ls -lh docker-compose.yaml docker-compose.yml 2>/dev/null || true
+          fi
+          
+          echo ""
+          echo "=== Repository setup concluído com sucesso ==="

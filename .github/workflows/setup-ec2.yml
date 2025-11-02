@@ -59,6 +59,44 @@ jobs:
           repository_url: https://github.com/${{ github.repository }}.git
           branch: ${{ github.ref_name || 'main' }}
 
+      - name: Verify Repository Clone
+        uses: ./.github/actions/run-ssm-command
+        with:
+          instance_id: ${{ secrets.AGROSTATION_EC2_INSTANCE_ID }}
+          command: |
+            set -e
+            PROJECT_DIR="$HOME/estacao-meteorologica"
+            
+            if [ ! -d "$PROJECT_DIR" ]; then
+              echo "ERRO: Diretório do projeto não existe: $PROJECT_DIR"
+              exit 1
+            fi
+            
+            cd "$PROJECT_DIR"
+            
+            if [ ! -d .git ]; then
+              echo "ERRO: Repositório Git não foi clonado corretamente!"
+              echo "Conteúdo do diretório:"
+              ls -la
+              exit 1
+            fi
+            
+            FILE_COUNT=$(find . -type f -not -path "./.git/*" | wc -l)
+            if [ "$FILE_COUNT" -eq 0 ]; then
+              echo "ERRO: Nenhum arquivo foi clonado do repositório!"
+              exit 1
+            fi
+            
+            echo "✓ Repositório verificado com sucesso"
+            echo "Diretório: $(pwd)"
+            echo "Branch: $(git branch --show-current)"
+            echo "Total de arquivos: $FILE_COUNT"
+            echo ""
+            echo "Arquivos principais:"
+            ls -lh docker-compose.* 2>/dev/null || echo "docker-compose não encontrado"
+            ls -lh Dockerfile 2>/dev/null || echo "Dockerfile não encontrado"
+            ls -lh manage.py 2>/dev/null || echo "manage.py não encontrado"
+
       - name: Setup Environment from Parameter Store
         uses: ./.github/actions/setup-env-from-params
         with:
