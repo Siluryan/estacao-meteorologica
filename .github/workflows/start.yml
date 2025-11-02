@@ -18,7 +18,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: us-east-1
-          role-to-assume: arn:aws:iam::914256152987:role/Agostation
+          role-to-assume: arn:aws:iam::914256152987:role/Agrostation
           role-session-name: agrostation-start-ec2-instance
 
       - name: Start EC2 Instance
