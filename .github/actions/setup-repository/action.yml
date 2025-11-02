@@ -169,5 +169,13 @@ runs:
             ls -lh docker-compose.* 2>/dev/null || ls -lh docker-compose.yaml docker-compose.yml 2>/dev/null || true
           fi
           
+          if [ "$USER" = "root" ] && [ -d "/home/ec2-user/estacao-meteorologica" ]; then
+            echo "Corrigindo permissões dos arquivos para ec2-user..."
+            chown -R ec2-user:ec2-user "$PROJECT_PATH" 2>/dev/null || {
+              echo "Aviso: Não foi possível alterar proprietário, mas continuando..."
+            }
+            echo "Permissões corrigidas"
+          fi
+          
           echo ""
           echo "=== Repository setup concluído com sucesso ==="
