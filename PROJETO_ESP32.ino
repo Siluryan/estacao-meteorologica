@@ -27,9 +27,9 @@
 // ---------------- Constantes ----------------
 const float VCC = 3.3;
 const int ADC_RESOLUTION = 4095;
-const float ACS712_SENSIBILIDADE = 0.066; // 66 mV/A
-const float OFFSET = 2.2; // tensão offset do sensor (ajustar se necessário)
-const float FATOR_VENTO = 2.4; // cada pulso ≈ 2.4 km/h (ajuste experimental)
+const float ACS712_SENSIBILIDADE = 0.066;
+const float OFFSET = VCC / 2.0;
+const float FATOR_VENTO = 2.4;
 
 const char* WIFI_SSID = "";
 const char* WIFI_PASSWORD = "";
@@ -432,7 +432,7 @@ void loop() {
     // --- Corrente (ACS712) ---
     int acs712Value = analogRead(ACS712_PIN);
     float sensorVoltage = (acs712Value * VCC) / ADC_RESOLUTION;
-    float corrente = abs((sensorVoltage - OFFSET) / ACS712_SENSIBILIDADE * 1000.0); // mA
+    float corrente = round(abs((sensorVoltage - OFFSET) / ACS712_SENSIBILIDADE * 1000.0));
 
     // --- BMP280 ---
     float pressao = bmp.readPressure() / 100.0F; // hPa
