@@ -18,5 +18,14 @@ runs:
       with:
         instance_id: ${{ inputs.instance_id }}
         command: |
-          mkdir -p ${{ inputs.project_path }}
-          cd ${{ inputs.project_path }} || cd ~/estacao-meteorologica || cd /home/ec2-user/estacao-meteorologica || cd /opt/estacao-meteorologica
+          set -e
+          
+          PROJECT_PATH="${{ inputs.project_path }}"
+          if [ "${PROJECT_PATH#~}" != "$PROJECT_PATH" ]; then
+            PROJECT_PATH="${PROJECT_PATH/#\~/$HOME}"
+          fi
+          
+          echo "Criando diretório do projeto em: $PROJECT_PATH"
+          mkdir -p "$PROJECT_PATH"
+          cd "$PROJECT_PATH"
+          echo "Diretório criado: $(pwd)"

@@ -25,17 +25,30 @@ runs:
       with:
         instance_id: ${{ inputs.instance_id }}
         command: |
+          set -e
+          
           PROJECT_PATH="${{ inputs.project_path }}"
+          if [ "${PROJECT_PATH#~}" != "$PROJECT_PATH" ]; then
+            PROJECT_PATH="${PROJECT_PATH/#\~/$HOME}"
+          fi
+          
           REPO_URL="${{ inputs.repository_url }}"
           BRANCH="${{ inputs.branch }}"
           
-          mkdir -p $PROJECT_PATH
-          cd $PROJECT_PATH
+          echo "Clonando repositório em: $PROJECT_PATH"
+          mkdir -p "$PROJECT_PATH"
+          cd "$PROJECT_PATH"
           
           if [ -d .git ]; then
+            echo "Repositório já existe, atualizando..."
             git fetch origin
             git checkout $BRANCH
             git pull origin $BRANCH
           else
+            echo "Clonando repositório..."
             git clone -b $BRANCH $REPO_URL .
           fi
+          
+          echo "Verificando conteúdo do diretório:"
+          ls -la
+          echo "Diretório atual: $(pwd)"
