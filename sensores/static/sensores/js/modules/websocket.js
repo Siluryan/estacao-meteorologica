@@ -84,7 +84,7 @@ const WebSocketManager = {
 
         if (data.corrente !== undefined) {
             const element = document.getElementById('corrente');
-            if (element) element.textContent = data.corrente;
+            if (element) element.textContent = Math.round(data.corrente);
             ChartsManager.updateChart('corrente', data.corrente);
             IndicatorsManager.evaluateCorrente(data.corrente);
         }
