@@ -75,7 +75,19 @@ body {
     -webkit-text-fill-color: var(--primary-color);
 }
 
-.menu a {
+.logo:hover {
+    background: linear-gradient(135deg, #374151 0%, #4b5563 50%, #1f2937 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    transform: translateY(-2px);
+}
+
+.logo:hover i {
+    -webkit-text-fill-color: #374151;
+}
+
+.menu a:not(.logo) {
     color: var(--text-primary);
     text-decoration: none;
     font-weight: 500;
@@ -85,7 +97,7 @@ body {
     position: relative;
 }
 
-.menu a:hover {
+.menu a:not(.logo):hover {
     background: var(--gradient-tech);
     color: white;
     transform: translateY(-2px);
