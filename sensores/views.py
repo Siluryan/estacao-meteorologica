@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.db.models import Avg
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta, timezone as dt_timezone
 import json
 from .models import DadoSensor
 from django.db.models.functions import TruncDate
@@ -11,14 +11,23 @@ from django.db.models.functions import TruncDate
 @login_required(login_url="login")
 def dashboard(request):
     periodo = request.GET.get("periodo", "hoje")
-    hoje = timezone.now()
+    hoje_local = timezone.localtime(timezone.now())
+    inicio_hoje_local = hoje_local.replace(hour=0, minute=0, second=0, microsecond=0)
+    fim_hoje_local = hoje_local.replace(hour=23, minute=59, second=59, microsecond=999999)
+    utc = dt_timezone.utc
+    inicio_hoje_utc = inicio_hoje_local.astimezone(utc)
+    fim_hoje_utc = fim_hoje_local.astimezone(utc)
 
     if periodo == "hoje":
-        dados = DadoSensor.objects.filter(data__date=hoje.date())
+        dados = DadoSensor.objects.filter(data__gte=inicio_hoje_utc, data__lte=fim_hoje_utc)
     elif periodo == "semana":
-        dados = DadoSensor.objects.filter(data__gte=hoje - timedelta(days=7))
+        inicio_local = inicio_hoje_local - timedelta(days=7)
+        inicio_utc = inicio_local.astimezone(utc)
+        dados = DadoSensor.objects.filter(data__gte=inicio_utc)
     else:
-        dados = DadoSensor.objects.filter(data__gte=hoje - timedelta(days=30))
+        inicio_local = inicio_hoje_local - timedelta(days=30)
+        inicio_utc = inicio_local.astimezone(utc)
+        dados = DadoSensor.objects.filter(data__gte=inicio_utc)
 
     dados = dados.order_by("-data")[:10]
     return render(request, "dashboard.html", {"dados": dados})
@@ -27,22 +36,23 @@ def dashboard(request):
 @login_required(login_url="login")
 def estatisticas(request):
     periodo = request.GET.get("periodo", "hoje")
-    hoje = timezone.now()
-    inicio_hoje = hoje.replace(hour=0, minute=0, second=0, microsecond=0)
-    fim_hoje = hoje.replace(hour=23, minute=59, second=59, microsecond=999999)
+    hoje_local = timezone.localtime(timezone.now())
+    inicio_hoje_local = hoje_local.replace(hour=0, minute=0, second=0, microsecond=0)
+    fim_hoje_local = hoje_local.replace(hour=23, minute=59, second=59, microsecond=999999)
+    utc = dt_timezone.utc
+    inicio_hoje_utc = inicio_hoje_local.astimezone(utc)
+    fim_hoje_utc = fim_hoje_local.astimezone(utc)
 
     if periodo == "hoje":
-        dados = DadoSensor.objects.filter(data__date=hoje.date())
+        dados = DadoSensor.objects.filter(data__gte=inicio_hoje_utc, data__lte=fim_hoje_utc)
     elif periodo == "semana":
-        inicio = (inicio_hoje - timedelta(days=6)).date()
-        dados = DadoSensor.objects.filter(
-            data__date__gte=inicio, data__date__lte=hoje.date()
-        )
+        inicio_local = inicio_hoje_local - timedelta(days=6)
+        inicio_utc = inicio_local.astimezone(utc)
+        dados = DadoSensor.objects.filter(data__gte=inicio_utc, data__lte=fim_hoje_utc)
     else:
-        inicio = (inicio_hoje - timedelta(days=29)).date()
-        dados = DadoSensor.objects.filter(
-            data__date__gte=inicio, data__date__lte=hoje.date()
-        )
+        inicio_local = inicio_hoje_local - timedelta(days=29)
+        inicio_utc = inicio_local.astimezone(utc)
+        dados = DadoSensor.objects.filter(data__gte=inicio_utc, data__lte=fim_hoje_utc)
 
     context = {
         "periodo": periodo,
