@@ -101,7 +101,7 @@ O sistema é composto por diversos serviços containerizados:
 
 ```
 estacao-meteorologica/
-├── scripts/                  # Scripts auxiliares
+├── scripts/                 # Scripts auxiliares
 │   ├── create_superuser.py  # Criação de superusuário
 │   ├── mqtt_consumer.py     # Consumidor MQTT
 │   └── mqtt_simulator.py    # Simulador de sensores
