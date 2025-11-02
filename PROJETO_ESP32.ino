@@ -1,4 +1,5 @@
 #include <WiFi.h>
+#define MQTT_MAX_PACKET_SIZE 2048
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <DHT.h>
@@ -269,12 +270,12 @@ void enviarDadosMQTT(float temperatura, float humidade, float lux, bool estaChov
                      float pressao_hpa, float altitude_m, float tempBMP) {
   StaticJsonDocument<2048> doc;
 
-  doc["temperatura_dht"]    = temperatura;
-  doc["umidade_dht"]       = humidade;
-  doc["luminosidade_lux"]  = lux;
+  doc["temperatura"]       = temperatura;
+  doc["umidade"]           = humidade;
+  doc["luminosidade"]      = lux;
   doc["chuva"]             = estaChovendo;
   doc["gas_detectado"]     = gasDetectado;
-  doc["corrente_mA"]       = corrente;
+  doc["corrente"]          = corrente;
   doc["pm1_0"]             = pm1_0;
   doc["pm2_5"]             = pm2_5;
   doc["pm10"]              = pm10;
@@ -356,6 +357,7 @@ void setup() {
   // WiFi + MQTT
   connectWiFi();
   mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
+  mqttClient.setBufferSize(MQTT_MAX_PACKET_SIZE);
 
   // Cria a task de localização (FreeRTOS) no core 1
   xTaskCreatePinnedToCore(
@@ -520,6 +522,4 @@ void loop() {
     // tenta reconectar de forma não bloqueante
     connectMQTT();
   }
-}
-
 }
