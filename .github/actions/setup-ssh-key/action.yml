@@ -1,0 +1,63 @@
+name: 'Setup SSH Key'
+description: 'Configura chave SSH na EC2 para acesso a repositórios privados'
+
+inputs:
+  instance_id:
+    description: 'Instance ID da EC2'
+    required: true
+  ssh_key:
+    description: 'Chave SSH privada'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup SSH Key
+      uses: ./.github/actions/run-ssm-command
+      with:
+        instance_id: ${{ inputs.instance_id }}
+        command: |
+          set -e
+          
+          echo "=== Setup SSH Key ==="
+          
+          if [ -z "${{ inputs.ssh_key }}" ]; then
+            echo "Nenhuma chave SSH fornecida. Pulando configuração."
+            echo "Nota: Para repositórios privados, forneça uma chave SSH."
+            exit 0
+          fi
+          
+          SSH_DIR="$HOME/.ssh"
+          SSH_KEY_FILE="$SSH_DIR/agrostationec2"
+          
+          echo "Configurando chave SSH em: $SSH_KEY_FILE"
+          
+          mkdir -p "$SSH_DIR"
+          chmod 700 "$SSH_DIR"
+          
+          echo "${{ inputs.ssh_key }}" > "$SSH_KEY_FILE"
+          chmod 600 "$SSH_KEY_FILE"
+          
+          echo "Adicionando GitHub às known_hosts..."
+          ssh-keyscan -t rsa,ed25519 github.com >> "$SSH_DIR/known_hosts" 2>/dev/null || true
+          chmod 644 "$SSH_DIR/known_hosts"
+          
+          echo "Configurando SSH config..."
+          {
+            echo "Host github.com"
+            echo "  User git"
+            echo "  IdentityFile ~/.ssh/agrostationec2"
+            echo "  StrictHostKeyChecking accept-new"
+            echo "  IdentitiesOnly yes"
+          } > "$SSH_DIR/config"
+          chmod 600 "$SSH_DIR/config"
+          
+          echo "Testando conexão SSH com GitHub..."
+          ssh -T git@github.com -o StrictHostKeyChecking=accept-new 2>&1 | head -5 || {
+            echo "Aviso: Teste de conexão falhou, mas continuando..."
+            echo "Isso é normal se a chave ainda não foi adicionada ao GitHub ou se for a primeira vez."
+          }
+          
+          echo ""
+          echo "=== SSH Key setup concluído ==="
+

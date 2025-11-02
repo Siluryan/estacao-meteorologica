@@ -51,6 +51,12 @@ jobs:
           instance_id: ${{ secrets.AGROSTATION_EC2_INSTANCE_ID }}
           project_path: ~/estacao-meteorologica
 
+      - name: Setup SSH Key
+        uses: ./.github/actions/setup-ssh-key
+        with:
+          instance_id: ${{ secrets.AGROSTATION_EC2_INSTANCE_ID }}
+          ssh_key: ${{ secrets.AGROSTATION_EC2_SSH_KEY }}
+
       - name: Setup Repository
         uses: ./.github/actions/setup-repository
         with:

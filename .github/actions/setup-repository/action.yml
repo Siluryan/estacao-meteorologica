@@ -49,11 +49,23 @@ runs:
           REPO_URL="${{ inputs.repository_url }}"
           BRANCH="${{ inputs.branch }}"
           
+          SSH_KEY_FILE="$HOME/.ssh/agrostationec2"
+          
+          if [ -f "$SSH_KEY_FILE" ]; then
+            echo "Chave SSH encontrada, convertendo URL para SSH se necessário..."
+            if [[ "$REPO_URL" == https://github.com/* ]]; then
+              REPO_URL="${REPO_URL#https://github.com/}"
+              REPO_URL="git@github.com:${REPO_URL}"
+              echo "URL convertida para SSH: $REPO_URL"
+            fi
+          fi
+          
           echo "Repositório: $REPO_URL"
           echo "Branch: $BRANCH"
           echo "Diretório destino: $PROJECT_PATH"
           echo "Usuário atual: $(whoami)"
           echo "HOME: $HOME"
+          echo "Chave SSH configurada: $([ -f "$SSH_KEY_FILE" ] && echo 'Sim' || echo 'Não')"
           
           mkdir -p "$PROJECT_PATH"
           cd "$PROJECT_PATH"
