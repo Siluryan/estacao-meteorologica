@@ -184,29 +184,80 @@ void connectWiFi() {
 }
 
 void connectMQTT() {
-  if (mqttClient.connected()) return;
+  if (mqttClient.connected()) {
+    mqttClient.loop();
+    return;
+  }
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi desconectado. Reconectando...");
+    connectWiFi();
+    return;
+  }
 
   String clientId = "ESP32Client-";
   clientId += WiFi.macAddress();
 
   mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
+  mqttClient.setKeepAlive(60);
+  
   unsigned long start = millis();
-  while (!mqttClient.connected()) {
-    Serial.print("Conectando ao broker MQTT...");
+  int tentativas = 0;
+  const int MAX_TENTATIVAS = 3;
+  
+  while (!mqttClient.connected() && tentativas < MAX_TENTATIVAS) {
+    Serial.print("Conectando ao broker MQTT ");
+    Serial.print(MQTT_BROKER);
+    Serial.print(":");
+    Serial.print(MQTT_PORT);
+    Serial.print(" (tentativa ");
+    Serial.print(tentativas + 1);
+    Serial.print("/");
+    Serial.print(MAX_TENTATIVAS);
+    Serial.println(")...");
+    
     if (mqttClient.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
       Serial.println("Conectado ao MQTT!");
+      Serial.print("ClientID: ");
+      Serial.println(clientId);
+      return;
     } else {
-      Serial.print("Falha. Código: ");
-      Serial.print(mqttClient.state());
-      Serial.println(" Tentando novamente em 5s...");
-      delay(5000);
+      tentativas++;
+      Serial.print("Falha na conexão. Código: ");
+      Serial.println(mqttClient.state());
+      
+      switch(mqttClient.state()) {
+        case -4: Serial.println("Erro: Timeout de conexão"); break;
+        case -3: Serial.println("Erro: Conexão perdida"); break;
+        case -2: Serial.println("Erro: Falha ao conectar"); break;
+        case -1: Serial.println("Erro: Cliente desconectado"); break;
+        case 1: Serial.println("Erro: Versão de protocolo inválida"); break;
+        case 2: Serial.println("Erro: Client ID rejeitado"); break;
+        case 3: Serial.println("Erro: Servidor indisponível"); break;
+        case 4: Serial.println("Erro: Credenciais inválidas"); break;
+        case 5: Serial.println("Erro: Não autorizado"); break;
+        default: Serial.print("Erro desconhecido: "); Serial.println(mqttClient.state()); break;
+      }
+      
+      if (tentativas < MAX_TENTATIVAS) {
+        Serial.println("Tentando novamente em 5s...");
+        delay(5000);
+      }
+      
       if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("WiFi desconectado durante tentativa. Reconectando...");
         connectWiFi();
       }
     }
+    
     if (millis() - start > 60000) {
+      Serial.println("Timeout: mais de 60s tentando conectar");
       start = millis();
     }
+  }
+  
+  if (tentativas >= MAX_TENTATIVAS) {
+    Serial.println("Falha ao conectar após várias tentativas. Tente novamente no próximo ciclo.");
   }
 }
 
@@ -216,7 +267,7 @@ void enviarDadosMQTT(float temperatura, float humidade, float lux, bool estaChov
                      double latitude, double longitude, const String& localizacao,
                      float vento_kmh, float vento_ms, float umidadeSolo,
                      float pressao_hpa, float altitude_m, float tempBMP) {
-  StaticJsonDocument<1024> doc;
+  StaticJsonDocument<2048> doc;
 
   doc["temperatura_dht"]    = temperatura;
   doc["umidade_dht"]       = humidade;
@@ -237,19 +288,37 @@ void enviarDadosMQTT(float temperatura, float humidade, float lux, bool estaChov
   doc["altitude_m"]        = altitude_m;
   doc["temperatura_bmp"]   = tempBMP;
 
-  char payload[1024];
+  char payload[2048];
   size_t len = serializeJson(doc, payload, sizeof(payload));
+  
+  if (len >= sizeof(payload) - 1) {
+    Serial.println("ERRO: Payload muito grande! Reduzindo tamanho...");
+    len = sizeof(payload) - 1;
+  }
+  payload[len] = '\0';
 
   if (!mqttClient.connected()) {
     connectMQTT();
   }
-  bool ok = mqttClient.publish(MQTT_TOPIC, payload, len);
+  
+  if (!mqttClient.connected()) {
+    Serial.println("ERRO: Não conectado ao MQTT. Tentando reconectar...");
+    connectMQTT();
+    return;
+  }
+  
+  mqttClient.loop();
+  
+  bool ok = mqttClient.publish(MQTT_TOPIC, payload, false);
+  
   if (ok) {
     Serial.println("Dados publicados via MQTT:");
+    Serial.println(payload);
   } else {
-    Serial.println("Falha ao publicar no MQTT.");
+    Serial.print("Falha ao publicar no MQTT. Estado: ");
+    Serial.println(mqttClient.state());
+    Serial.println(payload);
   }
-  Serial.println(payload);
 }
 
 // ---------------- Setup ----------------
@@ -451,4 +520,6 @@ void loop() {
     // tenta reconectar de forma não bloqueante
     connectMQTT();
   }
+}
+
 }
