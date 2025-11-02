@@ -186,7 +186,6 @@ void connectWiFi() {
 void connectMQTT() {
   if (mqttClient.connected()) return;
 
-  // usa MAC para gerar clientId único
   String clientId = "ESP32Client-";
   clientId += WiFi.macAddress();
 
@@ -201,12 +200,10 @@ void connectMQTT() {
       Serial.print(mqttClient.state());
       Serial.println(" Tentando novamente em 5s...");
       delay(5000);
-      // proteção: se sem WiFi, tenta reconectar WiFi
       if (WiFi.status() != WL_CONNECTED) {
         connectWiFi();
       }
     }
-    // evitar ficar preso indefinidamente sem WiFi
     if (millis() - start > 60000) {
       start = millis();
     }
@@ -219,7 +216,6 @@ void enviarDadosMQTT(float temperatura, float humidade, float lux, bool estaChov
                      double latitude, double longitude, const String& localizacao,
                      float vento_kmh, float vento_ms, float umidadeSolo,
                      float pressao_hpa, float altitude_m, float tempBMP) {
-  // Ajuste do tamanho do documento conforme campos
   StaticJsonDocument<1024> doc;
 
   doc["temperatura_dht"]    = temperatura;
