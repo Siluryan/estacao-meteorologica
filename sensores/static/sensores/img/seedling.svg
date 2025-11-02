@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <!-- Gradiente verde suave da esquerda (mais escuro) para direita (mais claro) -->
+    <linearGradient id="greenGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#2d5a27;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#4aab4a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#66cc66;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Caule mais fino e menor -->
+  <ellipse cx="32" cy="56" rx="3" ry="5" fill="url(#greenGradient)"/>
+  <ellipse cx="32" cy="50" rx="2.5" ry="4" fill="url(#greenGradient)"/>
+  <ellipse cx="32" cy="44" rx="2" ry="3" fill="url(#greenGradient)"/>
+  <ellipse cx="32" cy="38" rx="1.5" ry="2.5" fill="url(#greenGradient)"/>
+  
+  <!-- Folha esquerda - mais próxima, mais cheia e arredondada, formato de lágrima -->
+  <path d="M 32 36 C 27 28, 20 18, 16 10 C 13 5, 13 2, 14.5 1.5 C 17 2.5, 18 4, 19 6.5 C 22 12, 26 18, 30 23 Z" 
+        fill="url(#greenGradient)"/>
+  
+  <!-- Folha direita - mais próxima, mais cheia e arredondada, formato de lágrima -->
+  <path d="M 32 36 C 37 28, 44 18, 48 10 C 51 5, 51 2, 49.5 1.5 C 47 2.5, 46 4, 45 6.5 C 42 12, 38 18, 34 23 Z" 
+        fill="url(#greenGradient)"/>
+</svg>
